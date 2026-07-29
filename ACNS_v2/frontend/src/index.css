@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global styles */
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Leaflet Popup Overrides ────────────────────────────────────────────────
+   Leaflet popups are rendered in a detached DOM layer outside React,
+   so Tailwind utilities can't style them. These CSS rules ensure
+   popups match the dashboard design language.
+   ─────────────────────────────────────────────────────────────────────────── */
+.sciars-popup .leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  padding: 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f3f4f6;
+  overflow: hidden;
+}
+
+.sciars-popup .leaflet-popup-content {
+  margin: 14px 16px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #374151;
+}
+
+.sciars-popup .leaflet-popup-tip {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f3f4f6;
+}
+
+.sciars-popup .leaflet-popup-close-button {
+  color: #9ca3af !important;
+  font-size: 18px !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  top: 6px !important;
+  right: 6px !important;
+  transition: color 0.15s, background 0.15s;
+  border-radius: 6px;
+}
+
+.sciars-popup .leaflet-popup-close-button:hover {
+  color: #1f2937 !important;
+  background: #f3f4f6;
+}
+
+/* Remove white square behind custom div markers */
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Ensure marker icons don't overflow */
+.leaflet-marker-icon,
+.leaflet-marker-icon img {
+  max-width: 28px !important;
+  max-height: 28px !important;
+  width: 28px !important;
+  height: 28px !important;
+}
+
+/* Custom marker icon sizing */
+.custom-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.custom-marker-icon > div {
+  width: 28px !important;
+  height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+  display: block !important;
+}
+
+/* Constrain marker panes */
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+.leaflet-overlay-pane {
+  z-index: 400 !important;
+}
+
+/* Hide any broken/missing marker images */
+.leaflet-default-icon-path,
+img[src*="marker-icon"],
+.leaflet-marker-icon[style*="undefined"] {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+Frontend/node_modules/
+backend/venv/
+backend/.venv/
+backend/env/
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environment Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+serviceAccountKey.json
+backend/serviceAccountKey.json
+
+# Keep Example Env
+!.env.example
+!backend/.env.example
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Custom Virtual Environments
+backend/acnsv2/
+acnsv2/
