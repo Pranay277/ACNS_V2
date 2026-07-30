@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import NavbarUser from "../components/NavbarUser";
+import CameraCapture from "../components/CameraCapture";
+import MapView from "../components/MapView";
 import { createIssue } from "../services/api";
 
 const mapCategory = (cat) => {
@@ -31,14 +33,61 @@ const priorities = [
   { id: "critical", label: "Critical", color: "text-red-600 bg-red-50 border-red-200" },
 ];
 
+const SUBCATEGORIES = {
+  infrastructure: [
+    { id: "ramp", label: "Ramp Access" },
+    { id: "elevator", label: "Elevator / Lift" },
+    { id: "staircase", label: "Staircase" },
+    { id: "corridor", label: "Corridor / Pathway" },
+    { id: "doorway", label: "Doorway / Entrance" },
+  ],
+  utilities: [
+    { id: "water", label: "Water Dispenser" },
+    { id: "restroom", label: "Restroom" },
+    { id: "electrical", label: "Electrical Outlet" },
+    { id: "lighting", label: "Lighting" },
+    { id: "alarm", label: "Emergency Alarm" },
+  ],
+  sanitation: [
+    { id: "toilet", label: "Restroom Cleanliness" },
+    { id: "garbage", label: "Garbage Bin" },
+    { id: "drainage", label: "Drainage" },
+    { id: "handwash", label: "Handwashing Station" },
+    { id: "drinking", label: "Drinking Water" },
+  ],
+  safety: [
+    { id: "exit", label: "Emergency Exit" },
+    { id: "extinguisher", label: "Fire Extinguisher" },
+    { id: "firstaid", label: "First Aid" },
+    { id: "camera", label: "Security Camera" },
+    { id: "phone", label: "Emergency Phone" },
+  ],
+  transport: [
+    { id: "busstop", label: "Bus Stop" },
+    { id: "parking", label: "Parking" },
+    { id: "dropoff", label: "Drop-off Zone" },
+    { id: "pathway", label: "Pedestrian Pathway" },
+    { id: "bicycle", label: "Bicycle Rack" },
+  ],
+  environment: [
+    { id: "tree", label: "Tree / Greenery" },
+    { id: "garden", label: "Garden / Park" },
+    { id: "bench", label: "Bench / Seating" },
+    { id: "shade", label: "Shade Canopy" },
+    { id: "shelter", label: "Weather Shelter" },
+  ],
+};
+
 export default function ReportIssue() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     category: "",
+    subCategory: "",
     priority: "medium",
-    location: "",
+    college: "",
+    locationText: "",
     lat: null,
     lng: null,
     image: null,
@@ -47,7 +96,13 @@ export default function ReportIssue() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [gpsLoading, setGpsLoading] = useState(false);
-  const [gpsStatus, setGpsStatus] = useState(null); // null | "success" | "error"
+  const [gpsStatus, setGpsStatus] = useState(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+const [showCamera, setShowCamera] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [tempLocation, setTempLocation] = useState(null);
+  const [tempAccuracy, setTempAccuracy] = useState(null);
+  const watchIdRef = useRef(null);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -66,19 +121,83 @@ export default function ReportIssue() {
     }
     setGpsLoading(true);
     setGpsStatus(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setFormData((prev) => ({ ...prev, lat: latitude, lng: longitude }));
+    setTempLocation(null);
+    setTempAccuracy(null);
+
+    let bestPosition = null;
+    let bestAccuracy = Infinity;
+    const maxSamples = 5;
+    let sampleCount = 0;
+
+    const updatePosition = (position) => {
+      const { latitude, longitude, accuracy } = position.coords;
+      sampleCount++;
+      
+      if (accuracy < bestAccuracy) {
+        bestAccuracy = accuracy;
+        bestPosition = { lat: latitude, lng: longitude };
+      }
+
+      setTempAccuracy(accuracy);
+
+      if (sampleCount >= maxSamples) {
+        finishGPS(bestPosition, bestAccuracy);
+      }
+    };
+
+    const finishGPS = (position, accuracy) => {
+      if (watchIdRef.current) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+
+      if (position) {
+        setTempLocation([position.lat, position.lng]);
+        setTempAccuracy(accuracy);
         setGpsLoading(false);
-        setGpsStatus("success");
-      },
-      () => {
-        setGpsLoading(false);
+        setShowMapModal(true);
+      } else {
         setGpsStatus("error");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+        setGpsLoading(false);
+      }
+    };
+
+    const startWatching = () => {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        updatePosition,
+        (error) => {
+          console.error("GPS error:", error);
+          if (sampleCount > 0) {
+            finishGPS(bestPosition, bestAccuracy);
+          } else {
+            finishGPS(null, null);
+          }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+
+      setTimeout(() => {
+        if (watchIdRef.current && sampleCount < maxSamples) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+          finishGPS(bestPosition, bestAccuracy);
+        }
+      }, 8000);
+    };
+
+    startWatching();
+  };
+
+  const handleLocationConfirm = () => {
+    if (tempLocation) {
+      setFormData((prev) => ({ 
+        ...prev, 
+        lat: tempLocation[0], 
+        lng: tempLocation[1] 
+      }));
+      setGpsStatus("success");
+      setShowMapModal(false);
+    }
   };
 
   const validateForm = () => {
@@ -86,7 +205,10 @@ export default function ReportIssue() {
     if (!formData.title.trim()) newErrors.title = "Title is required";
     if (!formData.description.trim()) newErrors.description = "Description is required";
     if (!formData.category) newErrors.category = "Please select a category";
-    if (!formData.location.trim()) newErrors.location = "Location is required";
+    if (formData.category && !formData.subCategory) newErrors.subCategory = "Please select a sub-category";
+    if (!formData.college) newErrors.location = "Please select a college";
+    if (!formData.locationText.trim()) newErrors.location = "Location description is required";
+    if (!formData.image) newErrors.image = "Image is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -102,10 +224,12 @@ export default function ReportIssue() {
       const payload = {
         userId: user.email,
         category: mapCategory(formData.category),
+        subCategory: formData.subCategory,
         description: formData.description,
         lat: formData.lat ?? 17.3850,
         lng: formData.lng ?? 78.4867,
-        locationText: formData.location,
+        college: formData.college,
+        locationText: formData.locationText,
         imageUrl: formData.image ? imagePreview : null
       };
 
@@ -183,7 +307,7 @@ export default function ReportIssue() {
                     key={cat.id}
                     type="button"
                     onClick={() => {
-                      setFormData({ ...formData, category: cat.id });
+                      setFormData({ ...formData, category: cat.id, subCategory: "" });
                       if (errors.category) setErrors({ ...errors, category: "" });
                     }}
                     className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
@@ -201,6 +325,30 @@ export default function ReportIssue() {
               </div>
               {errors.category && <p className="mt-2 text-sm text-red-500">{errors.category}</p>}
             </div>
+
+            {formData.category && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sub-Category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.subCategory}
+                  onChange={(e) => {
+                    setFormData({ ...formData, subCategory: e.target.value });
+                    if (errors.subCategory) setErrors({ ...errors, subCategory: "" });
+                  }}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all appearance-none bg-white ${
+                    errors.subCategory ? "border-red-500" : "border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  <option value="">Select sub-category</option>
+                  {SUBCATEGORIES[formData.category]?.map((sub) => (
+                    <option key={sub.id} value={sub.id}>{sub.label}</option>
+                  ))}
+                </select>
+                {errors.subCategory && <p className="mt-1 text-sm text-red-500">{errors.subCategory}</p>}
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -248,16 +396,15 @@ export default function ReportIssue() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Location <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
+                <div className="space-y-3">
+                  <div className="relative">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                     <select
-                      value={formData.location}
+                      value={formData.college}
                       onChange={(e) => {
-                        setFormData({ ...formData, location: e.target.value });
+                        setFormData({ ...formData, college: e.target.value });
                         if (errors.location) setErrors({ ...errors, location: "" });
                       }}
                       className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all appearance-none bg-white ${
@@ -272,61 +419,75 @@ export default function ReportIssue() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleGPS}
-                    disabled={gpsLoading}
-                    title="Use my current GPS location"
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
-                      gpsStatus === "success"
-                        ? "bg-green-50 border-green-300 text-green-700"
-                        : gpsStatus === "error"
-                        ? "bg-red-50 border-red-300 text-red-600"
-                        : "bg-gray-50 border-gray-300 text-gray-600 hover:bg-primary-50 hover:border-primary-400 hover:text-primary-700"
-                    } disabled:opacity-60 disabled:cursor-not-allowed`}
-                  >
-                    {gpsLoading ? (
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                    ) : gpsStatus === "success" ? (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : gpsStatus === "error" ? (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
+                  <textarea
+                    rows={2}
+                    placeholder="Describe the specific location (e.g., Near the main entrance, Behind the cafeteria)..."
+                    value={formData.locationText}
+                    onChange={(e) => {
+                      setFormData({ ...formData, locationText: e.target.value });
+                      if (errors.location) setErrors({ ...errors, location: "" });
+                    }}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none ${
+                      errors.location ? "border-red-500" : "border-gray-300 hover:border-gray-400"
+                    }`}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleGPS}
+                      disabled={gpsLoading}
+                      title="Use my current GPS location"
+                      className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                        gpsStatus === "success"
+                          ? "bg-green-50 border-green-300 text-green-700"
+                          : gpsStatus === "error"
+                          ? "bg-red-50 border-red-300 text-red-600"
+                          : "bg-gray-50 border-gray-300 text-gray-600 hover:bg-primary-50 hover:border-primary-400 hover:text-primary-700"
+                      } disabled:opacity-60 disabled:cursor-not-allowed`}
+                    >
+                      {gpsLoading ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      ) : gpsStatus === "success" ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : gpsStatus === "error" ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      )}
+                      <span>
+                        {gpsLoading ? "Locating..." : gpsStatus === "success" ? "Located" : gpsStatus === "error" ? "Failed" : "GPS"}
+                      </span>
+                    </button>
+                    {gpsStatus === "success" && formData.lat && (
+                      <p className="flex items-center text-xs text-green-600 font-medium">
+                        ✓ {formData.lat.toFixed(5)}, {formData.lng.toFixed(5)}
+                      </p>
                     )}
-                    <span className="hidden sm:inline">
-                      {gpsLoading ? "Locating..." : gpsStatus === "success" ? "Located" : gpsStatus === "error" ? "Failed" : "My Location"}
-                    </span>
-                  </button>
+                    {gpsStatus === "error" && (
+                      <p className="text-xs text-red-500">Could not get GPS location</p>
+                    )}
+                  </div>
                 </div>
-                {gpsStatus === "success" && formData.lat && (
-                  <p className="mt-1.5 text-xs text-green-600 font-medium">
-                    ✓ GPS captured: {formData.lat.toFixed(5)}, {formData.lng.toFixed(5)}
-                  </p>
-                )}
-                {gpsStatus === "error" && (
-                  <p className="mt-1.5 text-xs text-red-500">Could not get GPS location. Please allow location access or type manually.</p>
-                )}
                 {errors.location && <p className="mt-1 text-sm text-red-500">{errors.location}</p>}
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Image (Optional)
+                Upload Image <span className="text-red-500">*</span>
               </label>
               <div className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                imagePreview ? "border-primary-300 bg-primary-50" : "border-gray-300 hover:border-gray-400"
+                imagePreview ? "border-primary-300 bg-primary-50" : errors.image ? "border-red-400 bg-red-50" : "border-gray-300 hover:border-gray-400"
               }`}>
                 {imagePreview ? (
                   <div className="relative inline-block z-10">
@@ -360,7 +521,29 @@ export default function ReportIssue() {
                   />
                 )}
               </div>
+              {!imagePreview && (
+                <button
+                  type="button"
+                  onClick={() => setShowCamera(true)}
+                  className="mt-3 w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Take Photo
+                </button>
+              )}
+              {errors.image && <p className="mt-2 text-sm text-red-500">{errors.image}</p>}
             </div>
+            <CameraCapture
+              isOpen={showCamera}
+              onClose={() => setShowCamera(false)}
+              onCapture={(imageData) => {
+                setImagePreview(imageData);
+                setFormData({ ...formData, image: imageData });
+              }}
+            />
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-gray-200">
               <button
@@ -412,6 +595,71 @@ export default function ReportIssue() {
           </div>
         </div>
       </div>
+
+      {/* Location Map Modal */}
+      {showMapModal && tempLocation && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          onClick={() => setShowMapModal(false)}
+        >
+          <div 
+            className="relative max-w-2xl w-full bg-white rounded-xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Confirm Location</h3>
+                  <p className="text-sm text-gray-500">Drag the pin or click on map to adjust location</p>
+                </div>
+                <button
+                  onClick={() => setShowMapModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              {tempAccuracy && (
+                <p className="text-xs text-gray-500 mt-1">GPS Accuracy: ±{Math.round(tempAccuracy)}m</p>
+              )}
+            </div>
+            
+            <div className="p-4">
+              <MapView 
+                singleLocation={tempLocation}
+                onLocationChange={(newPos) => setTempLocation(newPos)}
+                center={tempLocation}
+                zoom={18}
+                className="h-[50vh]"
+              />
+            </div>
+
+            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+              <p className="text-sm text-gray-600">
+                Selected: {tempLocation[0].toFixed(5)}, {tempLocation[1].toFixed(5)}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowMapModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLocationConfirm}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+                >
+                  Confirm Location
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

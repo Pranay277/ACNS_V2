@@ -5,11 +5,6 @@ from services.firebase_admin import db
 from services.duplicate_check import haversine
 from datetime import datetime
 
-# ✅ ADDED (as given)
-from services.twilio_service import notify_supervisor_whatsapp  # adjust import path if needed
-import logging
-logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
 CATEGORY_MAP = {
@@ -117,38 +112,6 @@ def create_issue(issue: IssueCreate):
 
         doc_ref = issues_ref.add(new_issue)
         issue_id = doc_ref[1].id
-
-        # ✅ EXACT SNIPPET ADDED (NO MODIFICATIONS)
-        try:
-            # Map your 4 categories to actual supervisor WhatsApp numbers
-            supervisor_routing = {
-                "safety": "whatsapp:+919885880277",         # Replace with actual Sandbox-joined numbers
-                "electrician": "whatsapp:+919885880277",
-                "infrastructure": "whatsapp:+919885880277",
-                "transport": "whatsapp:+919885880277"
-            }
-            
-            # Use 'issue.category' instead of 'data.get' 
-            category = issue.category.lower()
-            supervisor_phone = supervisor_routing.get(category, "whatsapp:+14150000000")
-            
-            # Map location directly from the Pydantic model
-            location_data = {
-                'latitude': issue.lat,
-                'longitude': issue.lng,
-                'address': issue.locationText 
-            }
-            
-            # Safe invocation
-            notify_supervisor_whatsapp(
-                supervisor_phone=supervisor_phone,
-                issue_description=issue.description or 'No description provided',
-                location_data=location_data,
-                photo_url=issue.imageUrl or ''
-            )
-        except Exception as twilio_err:
-            # Strict Isolation: Catch-all to guarantee we NEVER break the main reporting flow
-            logger.error(f"Safe Injection Block Caught Twilio Error: {twilio_err}")
 
         create_notification(
             user_id=issue.userId,
