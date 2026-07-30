@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getIssues } from '../services/api';
 import NavbarAdmin from '../components/NavbarAdmin';
+import MapView from '../components/MapView';
 
 const STATUS_CONFIG = {
   Open:         { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-200',    dot: 'bg-red-500'    },
@@ -26,6 +27,8 @@ export default function AdminIssues() {
   const [sort, setSort]               = useState('newest');
   const [search, setSearch]           = useState('');
   const [expandedId, setExpandedId]   = useState(null);
+  const [imageModal, setImageModal]   = useState(null);
+  const [locationModal, setLocationModal] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -275,7 +278,10 @@ export default function AdminIssues() {
                         </div>
                         <div>
                           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Coordinates</p>
-                          <p className="text-sm text-gray-700 font-mono">
+                          <p 
+                            className="text-sm text-gray-700 font-mono cursor-pointer hover:text-indigo-600 transition-colors"
+                            onClick={() => setLocationModal(issue.location)}
+                          >
                             {issue.location?.lat && issue.location?.lng
                               ? `${issue.location.lat.toFixed(5)}, ${issue.location.lng.toFixed(5)}`
                               : '—'}
@@ -284,7 +290,12 @@ export default function AdminIssues() {
                         {issue.imageUrl && (
                           <div className="sm:col-span-2 lg:col-span-4">
                             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Reported Image</p>
-                            <img src={issue.imageUrl} alt="Issue" className="max-h-48 rounded-lg border border-gray-200 object-cover" />
+                            <img 
+                              src={issue.imageUrl} 
+                              alt="Issue" 
+                              className="max-h-48 rounded-lg border border-gray-200 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setImageModal(issue.imageUrl)}
+                            />
                           </div>
                         )}
                         {(issue.status === 'In Progress' || issue.status === 'Resolved' || issue.status === 'Closed') && (
@@ -308,13 +319,23 @@ export default function AdminIssues() {
                               {issue.supervisorPhoto && (
                                 <div>
                                   <p className="text-xs text-gray-500 mb-1">Supervisor Photo</p>
-                                  <img src={issue.supervisorPhoto} alt="Supervisor" className="w-16 h-16 rounded-full border border-gray-300 object-cover" />
+                                  <img 
+                                    src={issue.supervisorPhoto} 
+                                    alt="Supervisor" 
+                                    className="w-16 h-16 rounded-full border border-gray-300 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => setImageModal(issue.supervisorPhoto)}
+                                  />
                                 </div>
                               )}
-                              {issue.proofImageUrl && (
+                              {issue.proofImageUrl && issue.status !== 'Resolved' && (
                                 <div>
                                   <p className="text-xs text-gray-500 mb-1">Proof Photo</p>
-                                  <img src={issue.proofImageUrl} alt="Proof" className="max-h-24 rounded-lg border border-green-200 object-cover" />
+                                  <img 
+                                    src={issue.proofImageUrl} 
+                                    alt="Proof" 
+                                    className="max-h-24 rounded-lg border border-green-200 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => setImageModal(issue.proofImageUrl)}
+                                  />
                                 </div>
                               )}
                             </div>
@@ -323,7 +344,12 @@ export default function AdminIssues() {
                         {issue.status === 'Resolved' && issue.proofImageUrl && !issue.supervisorPhoto && (
                           <div className="sm:col-span-2 lg:col-span-4">
                             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Resolution Proof</p>
-                            <img src={issue.proofImageUrl} alt="Proof" className="max-h-48 rounded-lg border border-green-200 object-cover" />
+                            <img 
+                              src={issue.proofImageUrl} 
+                              alt="Proof" 
+                              className="max-h-48 rounded-lg border border-green-200 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setImageModal(issue.proofImageUrl)}
+                            />
                           </div>
                         )}
                       </div>
@@ -340,6 +366,66 @@ export default function AdminIssues() {
           </div>
         )}
       </div>
+
+      {/* Image Modal */}
+      {imageModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+          onClick={() => setImageModal(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full">
+            <button
+              onClick={() => setImageModal(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <img 
+              src={imageModal} 
+              alt="Full screen" 
+              className="max-w-full max-h-[85vh] mx-auto rounded-lg shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Location Map Modal */}
+      {locationModal && locationModal.lat && locationModal.lng && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+          onClick={() => setLocationModal(null)}
+        >
+          <div className="relative max-w-3xl max-h-[90vh] w-full bg-white rounded-xl overflow-hidden">
+            <button
+              onClick={() => setLocationModal(null)}
+              className="absolute top-3 right-3 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+            >
+              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="p-2">
+              <MapView 
+                issues={[{ 
+                  id: 'selected', 
+                  location: { lat: locationModal.lat, lng: locationModal.lng, text: locationModal.text },
+                  status: 'Open'
+                }]} 
+                center={[locationModal.lat, locationModal.lng]}
+                zoom={17}
+                className="h-[60vh]"
+              />
+            </div>
+            {locationModal.text && (
+              <div className="p-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600">{locationModal.text}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

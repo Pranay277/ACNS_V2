@@ -10,6 +10,8 @@ const NotificationBell = ({ userId }) => {
   const [error, setError] = useState(null);
   const dropdownRef = useRef(null);
 
+  const storageKey = userId ? `notif_read_${userId}` : null;
+
   const fetchNotifications = async (isBackground = false) => {
     if (!userId) return;
 
@@ -17,7 +19,18 @@ const NotificationBell = ({ userId }) => {
       if (!isBackground) setLoading(true);
       if (!isBackground) setError(null);
       const response = await axios.get(`${API_BASE_URL}/notifications/${userId}`);
-      setNotifications(response.data || []);
+      const fetchedNotifications = response.data || [];
+      
+      const readIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const fetchTime = new Date().toISOString();
+      const updatedNotifications = fetchedNotifications.map(n => ({
+        ...n,
+        read: readIds.includes(n.id) || n.read,
+        _fetchTime: n.createdAt || n.timestamp || n.time || fetchTime,
+        createdAt: n.createdAt || n.timestamp || n.time || fetchTime
+      }));
+      
+      setNotifications(updatedNotifications);
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
       if (!isBackground) setError('Failed to load notifications');
@@ -27,10 +40,11 @@ const NotificationBell = ({ userId }) => {
   };
 
   useEffect(() => {
+    if (!userId) return;
     fetchNotifications(false);
     const intervalId = setInterval(() => fetchNotifications(true), 10000);
     return () => clearInterval(intervalId);
-  }, [userId]);
+  }, [userId, storageKey]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -44,18 +58,27 @@ const NotificationBell = ({ userId }) => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAsRead = async (notificationId) => {
-    try {
-      await axios.put(`${API_BASE_URL}/notifications/${notificationId}/read`);
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-      );
-    } catch (err) {
-      console.error('Failed to mark notification as read:', err);
+  const markAsRead = (notificationId) => {
+    const readIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    if (!readIds.includes(notificationId)) {
+      readIds.push(notificationId);
+      localStorage.setItem(storageKey, JSON.stringify(readIds));
     }
+    setNotifications(prev =>
+      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+    );
+  };
+
+  const markAllAsRead = () => {
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+    const readIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const newReadIds = [...new Set([...readIds, ...unreadIds])];
+    localStorage.setItem(storageKey, JSON.stringify(newReadIds));
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   const formatTime = (timestamp) => {
+    if (!timestamp) return 'Unknown';
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now - date;
@@ -68,6 +91,35 @@ const NotificationBell = ({ userId }) => {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
+  };
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'resolved':
+        return (
+          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        );
+      case 'assigned':
+        return (
+          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          </div>
+        );
+      default:
+        return (
+          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+        );
+    }
   };
 
   return (
@@ -92,12 +144,21 @@ const NotificationBell = ({ userId }) => {
           <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-              {loading && (
-                <div className="flex items-center text-sm text-gray-500">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
-                  Loading...
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Mark all read
+                  </button>
+                )}
+                {loading && (
+                  <div className="flex items-center text-sm text-gray-500">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -126,18 +187,16 @@ const NotificationBell = ({ userId }) => {
                   !notification.read ? 'bg-blue-50' : ''
                 }`}
               >
-                <div className="flex items-start space-x-3">
-                  <div className={`flex-shrink-0 mt-1 ${!notification.read ? 'text-blue-500' : 'text-gray-400'}`}>
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    {getNotificationIcon(notification.type)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm ${!notification.read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
                       {notification.title || notification.message}
                     </p>
-                    {notification.message && notification.title && (
-                      <p className="text-sm text-gray-500 mt-1">{notification.message}</p>
+                    {notification.message && notification.title && notification.title !== notification.message && (
+                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">{notification.message}</p>
                     )}
                     <p className="text-xs text-gray-400 mt-1">
                       {formatTime(notification.createdAt || notification.timestamp)}
