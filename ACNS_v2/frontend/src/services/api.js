@@ -19,5 +19,4 @@ export const verifyIssue = (id, data) => API.post(`/issues/${id}/verify`, data);
 // NOTIFICATIONS
 export const getNotifications = (userId) =>
   API.get(`/notifications/${userId}`);
-
 export default API;

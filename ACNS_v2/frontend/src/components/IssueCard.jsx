@@ -1,4 +1,4 @@
-const IssueCard = ({ issue, onClick }) => {
+const IssueCard = ({ issue, onClick, onMouseEnter, onMouseLeave }) => {
   const { category, description, status, location, reportCount, priority } = issue || {};
   const locationText = location?.text || "Location not specified";
   const statusColors = {
@@ -37,6 +37,8 @@ const IssueCard = ({ issue, onClick }) => {
   return (
     <div
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md hover:border-primary-300 transition-all cursor-pointer"
     >
       <div className="flex items-start justify-between mb-3">
