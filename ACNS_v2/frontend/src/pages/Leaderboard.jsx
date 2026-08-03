@@ -7,6 +7,7 @@ const medals = ["text-yellow-500", "text-gray-400", "text-amber-700"];
 // Maps the backend gamification profile shape to the shape the UI renders.
 const toLeaderboardUser = (u) => ({
   email: u.userId,
+  uid: u.uid,
   displayName: u.displayName || u.userId,
   issues: u.issuesReported || 0,
   points: u.totalPoints || 0,
@@ -17,11 +18,15 @@ export default function Leaderboard() {
   const [myOverall, setMyOverall] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
+  const [userId, setUserId] = useState("");
 
   useEffect(() => {
     try {
       const s = localStorage.getItem("session_user");
-      if (s) setUserEmail(JSON.parse(s).email || "");
+      if (s) {
+        setUserEmail(JSON.parse(s).email || "");
+        setUserId(JSON.parse(s).uid || "");
+      }
     } catch {}
   }, []);
 
@@ -35,8 +40,8 @@ export default function Leaderboard() {
         setLeaderboard([]);
       }
       try {
-        if (userEmail) {
-          const me = await getUserGamification(userEmail);
+        if (userId || userEmail) {
+          const me = await getUserGamification(userId || userEmail);
           const user = me.data?.user;
           setMyOverall(user ? { rank: user.rank, user: toLeaderboardUser(user) } : null);
         }
@@ -46,10 +51,12 @@ export default function Leaderboard() {
         setLoading(false);
       }
     })();
-  }, [userEmail]);
+  }, [userId, userEmail]);
 
+  const isMe = (u) =>
+    Boolean(userId && u.uid && u.uid === userId) || Boolean(userEmail && u.email === userEmail);
   const top5 = leaderboard.slice(0, 5);
-  const myTop5Index = top5.findIndex((u) => u.email === userEmail);
+  const myTop5Index = top5.findIndex(isMe);
   const monthName = "All-time leaderboard";
 
   return (
@@ -102,11 +109,11 @@ export default function Leaderboard() {
                   </div>
                 ) : (
                   top5.map((u, i) => {
-                    const isMe = u.email === userEmail;
+                    const isMyRow = isMe(u);
                     return (
                       <div
-                        key={u.email}
-                        className={`flex items-center gap-4 px-6 py-4 ${isMe ? "bg-primary-50" : "hover:bg-gray-50"} transition-colors`}
+                        key={u.uid || u.email}
+                        className={`flex items-center gap-4 px-6 py-4 ${isMyRow ? "bg-primary-50" : "hover:bg-gray-50"} transition-colors`}
                       >
                         <div className="flex-shrink-0 w-10 text-center">
                           {i < 3 ? (

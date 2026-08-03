@@ -9,8 +9,10 @@ import DashboardUser from "./pages/DashboardUser";
 import UserNavigate from "./pages/UserNavigate";
 import Leaderboard from "./pages/Leaderboard";
 import DashboardSupervisor from "./pages/DashboardSupervisor";
+import SupervisorProfile from "./pages/SupervisorProfile";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import AdminIssues from "./pages/AdminIssues";
+import SupervisorManagement from "./pages/SupervisorManagement";
 import IssueDetails from "./pages/IssueDetails";
 
 function AnimatedRoutes() {
@@ -27,9 +29,11 @@ function AnimatedRoutes() {
         <Route path="/user/navigate" element={<UserNavigate />} />
         <Route path="/user/leaderboard" element={<Leaderboard />} />
         <Route path="/supervisor" element={<DashboardSupervisor />} />
+        <Route path="/supervisor/profile" element={<SupervisorProfile />} />
         <Route path="/issues/:campusId/:issueId" element={<IssueDetails />} />
         <Route path="/admin" element={<DashboardAdmin />} />
         <Route path="/admin/issues" element={<AdminIssues />} />
+        <Route path="/admin/supervisors" element={<SupervisorManagement />} />
       </Routes>
     </PageTransition>
   );

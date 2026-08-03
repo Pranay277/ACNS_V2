@@ -15,7 +15,7 @@ const DashboardSupervisor = () => {
 
   const fetchTasks = async () => {
     try {
-      const res = await getIssues({ role: "supervisor", email: user.email });
+      const res = await getIssues({ role: "supervisor", userId: user.uid || user.email });
       const tasksArray = Array.isArray(res.data) ? res.data : [];
       const sortedTasks = tasksArray.sort((a, b) => (b.reportCount || 1) - (a.reportCount || 1));
       setTasks(sortedTasks);

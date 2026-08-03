@@ -76,7 +76,7 @@ export default function DashboardUser() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await getIssues({ role: "user", userId: user.email });
+        const res = await getIssues({ role: "user", userId: user.uid || user.email });
         setIssues(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error(err);
@@ -90,7 +90,7 @@ export default function DashboardUser() {
   useEffect(() => {
     const fetchNotifs = async () => {
       try {
-        const res = await getNotifications(user.email);
+        const res = await getNotifications(user.uid || user.email);
         setNotifications(res.data || []);
       } catch (err) {
         console.error(err);

@@ -12,7 +12,7 @@ const Navbar = () => {
       const session = localStorage.getItem('session_supervisor');
       if (session) {
         const data = JSON.parse(session);
-        return data.email || 'supervisor@campus.edu';
+        return data.uid || data.email || 'supervisor@campus.edu';
       }
     } catch {}
     return 'supervisor@campus.edu';
@@ -53,6 +53,16 @@ const Navbar = () => {
               }`}
             >
               All Resolved Issues
+            </Link>
+            <Link
+              to="/supervisor/profile"
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 hover:shadow-sm ${
+                isActive('/supervisor/profile')
+                  ? 'bg-primary-50 text-primary-600'
+                  : 'text-gray-600 hover:text-primary-600 hover:bg-gray-100'
+              }`}
+            >
+              My Profile
             </Link>
           </div>
 

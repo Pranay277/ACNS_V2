@@ -31,6 +31,12 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+.pytest_cache/
+**/.pytest_cache/
+*.log
+
+# UID Migration Report
+**/migrations/migrate_uid_manifest.json
 
 # Environment Secrets
 .env
@@ -58,6 +64,8 @@ Thumbs.db
 # Custom Virtual Environments
 backend/acnsv2/
 acnsv2/
+#readme files
+ACNS_v2/ACNS_V2_Project_Report.md
+ACNS_v2/Methodist_Campus_Graph_Design.md
+ACNS_v2/Navigation_Implementation_Plan.md
 ACNS_V2_Analysis_Report.md
-Methodist_Campus_Graph_Design.md
-Navigation_Implementation_Plan.md
