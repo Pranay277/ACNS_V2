@@ -24,4 +24,25 @@ export const auth = getAuth(app);
 // Storage instance
 export const storage = getStorage(app);
 
+/**
+ * Map common Firebase Authentication error codes to user-friendly messages.
+ * Falls back to the raw error message when the code is unknown.
+ */
+export function mapFirebaseAuthError(error) {
+  const code = error?.code || "";
+  const messages = {
+    "auth/invalid-credential": "Invalid email or password.",
+    "auth/wrong-password": "Invalid email or password.",
+    "auth/user-not-found": "No account found with this email.",
+    "auth/invalid-email": "Please enter a valid email address.",
+    "auth/email-already-in-use": "An account with this email already exists.",
+    "auth/weak-password": "Password is too weak. Use at least 8 characters.",
+    "auth/user-disabled": "This account has been disabled.",
+    "auth/too-many-requests": "Too many attempts. Please try again later.",
+    "auth/network-request-failed": "Network error. Check your connection and try again.",
+    "auth/operation-not-allowed": "This sign-in method is not enabled.",
+  };
+  return messages[code] || error?.message || "Something went wrong. Please try again.";
+}
+
 export default app;

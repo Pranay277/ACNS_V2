@@ -1,11 +1,10 @@
+import { STATUS_BADGE_STYLES_WITHOUT_CLOSED, PRIORITY_BADGE_STYLES } from "../constants/statusStyles";
+
 const IssueCard = ({ issue, onClick, onMouseEnter, onMouseLeave }) => {
   const { category, description, status, location, reportCount, priority } = issue || {};
   const locationText = location?.text || "Location not specified";
-  const statusColors = {
-    Open: "bg-red-100 text-red-800 border-red-200",
-    "In Progress": "bg-yellow-100 text-yellow-800 border-yellow-200",
-    Resolved: "bg-green-100 text-green-800 border-green-200",
-  };
+  // No Closed mapping by design: unhandled statuses fall back to Open styling.
+  const statusColors = STATUS_BADGE_STYLES_WITHOUT_CLOSED;
 
   const statusIcons = {
     Open: (
@@ -57,9 +56,7 @@ const IssueCard = ({ issue, onClick, onMouseEnter, onMouseLeave }) => {
         </div>
         <div className="flex flex-col items-end gap-1">
           {priority && (priority === 'High' || priority === 'Critical') && (
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-              priority === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
-            }`}>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PRIORITY_BADGE_STYLES[priority]}`}>
               {priority}
             </span>
           )}

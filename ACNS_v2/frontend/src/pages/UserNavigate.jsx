@@ -1,16 +1,19 @@
 import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polygon, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polygon, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
+import axios from "axios";
 import "leaflet/dist/leaflet.css";
 import NavbarUser from "../components/NavbarUser";
 import { getIssues } from "../services/api";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+
 const CATEGORIES = ["Infrastructure", "Electrical", "Cleanliness", "Safety", "Transport", "Environment"];
 
 const statusColors = {
-  Open:        { bg: '#ef4444', border: '#b91c1c' },
-  'In Progress':{ bg: '#f59e0b', border: '#d97706' },
-  Resolved:    { bg: '#22c55e', border: '#16a34a' },
+  Open:          { bg: '#ef4444', border: '#b91c1c' },
+  'In Progress': { bg: '#f59e0b', border: '#d97706' },
+  Resolved:      { bg: '#22c55e', border: '#16a34a' },
 };
 
 const createBallPin = (status) => {
@@ -68,6 +71,7 @@ const defaultCenter = [17.4126, 78.5247];
 
 const CAMPUS_DATA = {
   "OU College": {
+    campusId: "osmania",
     center: [17.4126, 78.5247],
     zoom: 15,
     boundary: [
@@ -90,8 +94,9 @@ const CAMPUS_DATA = {
     ],
   },
   "Methodist College": {
+    campusId: "methodist",
     center: [17.39181094222161, 78.47856891694526],
-    zoom: 17,
+    zoom: 18,
     boundary: [
       [17.39225, 78.47835],
       [17.39225, 78.47900],
@@ -115,7 +120,10 @@ export default function UserNavigate() {
   const [selectedCollege, setSelectedCollege] = useState("");
   const [startId, setStartId] = useState("");
   const [endId, setEndId] = useState("");
+  const [accessibilityMode, setAccessibilityMode] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [routeResult, setRouteResult] = useState(null);
   const [mapCenter, setMapCenter] = useState(null);
   const [mapZoom, setMapZoom] = useState(null);
 
@@ -142,17 +150,32 @@ export default function UserNavigate() {
     if (!campus) return;
     setMapCenter(campus.center);
     setMapZoom(campus.zoom);
+    setRouteResult(null);
   }, [selectedCollege, campus]);
 
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     if (!selectedCollege) { setError("Select a college first."); return; }
     if (!startId || !endId) { setError("Select both start and end locations."); return; }
     if (startId === endId) { setError("Start and end must be different."); return; }
-    const start = locations.find((l) => l.id === startId);
-    const end = locations.find((l) => l.id === endId);
-    if (!start || !end) { setError("Invalid location selection."); return; }
+
     setError("");
-    console.log("Backend payload:", { college: selectedCollege, start: { id: start.id, name: start.name, lat: start.lat, lng: start.lng }, end: { id: end.id, name: end.name, lat: end.lat, lng: end.lng } });
+    setLoading(true);
+    setRouteResult(null);
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/navigation/route`, {
+        campus_id: campus.campusId,
+        start_node: startId,
+        end_node: endId,
+        accessibility_mode: accessibilityMode,
+      });
+      setRouteResult(response.data);
+    } catch (err) {
+      const detail = err.response?.data?.detail || "Failed to calculate route. Please try again.";
+      setError(detail);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -165,7 +188,7 @@ export default function UserNavigate() {
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">College</label>
             <select
               value={selectedCollege}
-              onChange={(e) => { setSelectedCollege(e.target.value); setStartId(""); setEndId(""); setError(""); }}
+              onChange={(e) => { setSelectedCollege(e.target.value); setStartId(""); setEndId(""); setError(""); setRouteResult(null); }}
               className="w-full px-4 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white min-w-[180px]"
             >
               <option value="">Select college</option>
@@ -178,7 +201,7 @@ export default function UserNavigate() {
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Start</label>
             <select
               value={startId}
-              onChange={(e) => { setStartId(e.target.value); setError(""); }}
+              onChange={(e) => { setStartId(e.target.value); setError(""); setRouteResult(null); }}
               className="w-full px-4 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
               disabled={!selectedCollege}
             >
@@ -193,7 +216,7 @@ export default function UserNavigate() {
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">End</label>
             <select
               value={endId}
-              onChange={(e) => { setEndId(e.target.value); setError(""); }}
+              onChange={(e) => { setEndId(e.target.value); setError(""); setRouteResult(null); }}
               className="w-full px-4 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
               disabled={!selectedCollege}
             >
@@ -204,18 +227,56 @@ export default function UserNavigate() {
             </select>
           </div>
 
+          {/* Accessibility Mode Toggle */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
+            <span className="text-sm font-medium text-blue-800 whitespace-nowrap">♿ Accessible Route</span>
+            <button
+              onClick={() => { setAccessibilityMode(!accessibilityMode); setRouteResult(null); }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                accessibilityMode ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+              id="accessibility-toggle"
+              aria-label="Toggle accessibility mode"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  accessibilityMode ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
           <button
             onClick={handleCalculate}
-            disabled={!startId || !endId}
+            disabled={!startId || !endId || loading}
             className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm whitespace-nowrap"
           >
-            Calculate Route
+            {loading ? "Calculating..." : "Calculate Route"}
           </button>
         </div>
 
         {error && (
           <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
             {error}
+          </div>
+        )}
+
+        {/* Route Result Summary */}
+        {routeResult && routeResult.success && (
+          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+            <p className="text-sm font-semibold text-green-800">
+              ✅ Route found — {routeResult.total_distance_meters}m
+              {routeResult.accessibility_mode && <span className="ml-2 text-blue-700 font-normal">♿ Wheelchair friendly</span>}
+            </p>
+            <p className="text-xs text-green-600 mt-1">
+              Path: {routeResult.path_node_ids.join(" → ")}
+            </p>
+          </div>
+        )}
+
+        {routeResult && !routeResult.success && (
+          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
+            ⚠️ {routeResult.message}
           </div>
         )}
       </div>
@@ -230,6 +291,20 @@ export default function UserNavigate() {
             <Polygon positions={CAMPUS_DATA["OU College"].boundary} pathOptions={{ color: '#dc2626', weight: 3, dashArray: '10, 10', fillColor: '#dc2626', fillOpacity: 0.08 }} />
             <Polygon positions={CAMPUS_DATA["Methodist College"].boundary} pathOptions={{ color: '#2563eb', weight: 3, dashArray: '10, 10', fillColor: '#2563eb', fillOpacity: 0.08 }} />
             <FlyTo center={mapCenter} zoom={mapZoom} />
+
+            {/* Route Polyline */}
+            {routeResult?.success && routeResult.path.length > 1 && (
+              <Polyline
+                positions={routeResult.path}
+                pathOptions={{
+                  color: accessibilityMode ? '#2563eb' : '#16a34a',
+                  weight: 5,
+                  opacity: 0.85,
+                  dashArray: accessibilityMode ? '10, 5' : null,
+                }}
+              />
+            )}
+
             {issues.map((issue, index) => (
               <Marker
                 key={issue.id || index}
@@ -251,6 +326,7 @@ export default function UserNavigate() {
                 </Popup>
               </Marker>
             ))}
+
             {startId && locations.filter((l) => l.id === startId).map((loc) => {
               const counts = getCategoryCounts(issues, loc.lat, loc.lng);
               return (
@@ -272,6 +348,7 @@ export default function UserNavigate() {
                 </Marker>
               );
             })}
+
             {endId && locations.filter((l) => l.id === endId).map((loc) => {
               const counts = getCategoryCounts(issues, loc.lat, loc.lng);
               return (

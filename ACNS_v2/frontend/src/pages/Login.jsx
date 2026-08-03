@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { auth, mapFirebaseAuthError } from "../services/firebase";
+import { login, signup } from "../services/api";
 
 export default function Login() {
   const [name, setName] = useState("");
@@ -36,13 +39,42 @@ export default function Login() {
     e.preventDefault();
     if (!validateForm()) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      localStorage.setItem("session_" + selectedRole, JSON.stringify({ email, role: selectedRole }));
-      if (selectedRole === "user") navigate("/user");
-      else if (selectedRole === "supervisor") navigate("/supervisor");
+    setErrors({});
+    try {
+      const userCredential = isRegistering
+        ? await createUserWithEmailAndPassword(auth, email, password)
+        : await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await userCredential.user.getIdToken();
+
+      const res = isRegistering
+        ? await signup({ idToken, displayName: name.trim() })
+        : await login(idToken);
+      const profile = res.data.user;
+
+      if (profile.isActive === false) {
+        throw new Error("This account has been disabled. Contact an administrator.");
+      }
+      if (profile.role !== selectedRole) {
+        throw new Error(`This account does not have ${roleConfig[selectedRole].label} access. Sign in as ${roleConfig[profile.role]?.label || profile.role} instead.`);
+      }
+
+      localStorage.setItem("session_" + profile.role, JSON.stringify({
+        email: profile.email,
+        role: profile.role,
+        name: profile.displayName,
+        uid: profile.uid,
+        campusId: profile.campusId,
+      }));
+
+      if (profile.role === "user") navigate("/user");
+      else if (profile.role === "supervisor") navigate("/supervisor");
       else navigate("/admin");
-    }, 1500);
+    } catch (err) {
+      console.error("Authentication failed:", err);
+      setErrors({ form: mapFirebaseAuthError(err) });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!selectedRole) {
@@ -239,6 +271,15 @@ export default function Login() {
                 <a href="#" className={`text-sm transition-all duration-200 hover:translate-x-0.5 ${cfg.text}`}>
                   Forgot password?
                 </a>
+              </div>
+            )}
+
+            {errors.form && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600 flex items-start gap-2">
+                <svg className="w-5 h-5 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span>{errors.form}</span>
               </div>
             )}
 

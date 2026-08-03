@@ -41,10 +41,12 @@ MANIFEST
 backend/.env
 serviceAccountKey.json
 backend/serviceAccountKey.json
+frontend/.env
 
 # Keep Example Env
 !.env.example
 !backend/.env.example
+!frontend/.env.example
 
 # IDE / OS
 .vscode/
@@ -57,3 +59,5 @@ Thumbs.db
 backend/acnsv2/
 acnsv2/
 ACNS_V2_Analysis_Report.md
+Methodist_Campus_Graph_Design.md
+Navigation_Implementation_Plan.md
