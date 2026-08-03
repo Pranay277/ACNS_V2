@@ -12,7 +12,7 @@ const NavbarUser = () => {
       const session = localStorage.getItem('session_user');
       if (session) {
         const data = JSON.parse(session);
-        return data.email || 'user@campus.edu';
+        return data.uid || data.email || 'user@campus.edu';
       }
     } catch {}
     return 'user@campus.edu';

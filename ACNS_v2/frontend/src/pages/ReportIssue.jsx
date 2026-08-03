@@ -220,14 +220,15 @@ const [showCamera, setShowCamera] = useState(false);
     setIsSubmitting(true);
     try {
       let userEmail = "user1@gmail.com";
+      let userId = null;
       try {
         const session = JSON.parse(localStorage.getItem("session_user") || "{}");
         if (session.email) userEmail = session.email;
+        if (session.uid) userId = session.uid;
       } catch {}
-      const user = { email: userEmail };
 
       const payload = {
-        userId: user.email,
+        userId: userId || userEmail,
         category: mapCategory(formData.category),
         subCategory: formData.subCategory,
         description: formData.description,

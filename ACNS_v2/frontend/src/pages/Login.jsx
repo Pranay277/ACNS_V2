@@ -17,6 +17,10 @@ export default function Login() {
   const [isRegistering, setIsRegistering] = useState(false);
   const navigate = useNavigate();
 
+  // Only Students may self-register. Supervisors are provisioned by an
+  // administrator and Admins are seeded by the system — both are login-only.
+  const allowSignup = selectedRole === "user";
+
   const roleConfig = {
     user: { label: "Student", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z", border: "border-blue-200", hoverBorder: "hover:border-blue-400", bg: "bg-blue-50", hoverBg: "hover:bg-blue-50/80", text: "text-blue-600", ring: "focus:ring-blue-500", btn: "bg-blue-600 hover:bg-blue-700", shadow: "shadow-blue-200/50" },
     supervisor: { label: "Supervisor", icon: "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z", border: "border-purple-200", hoverBorder: "hover:border-purple-400", bg: "bg-purple-50", hoverBg: "hover:bg-purple-50/80", text: "text-purple-600", ring: "focus:ring-purple-500", btn: "bg-purple-600 hover:bg-purple-700", shadow: "shadow-purple-200/50" },
@@ -41,12 +45,12 @@ export default function Login() {
     setIsLoading(true);
     setErrors({});
     try {
-      const userCredential = isRegistering
+      const userCredential = isRegistering && allowSignup
         ? await createUserWithEmailAndPassword(auth, email, password)
         : await signInWithEmailAndPassword(auth, email, password);
       const idToken = await userCredential.user.getIdToken();
 
-      const res = isRegistering
+      const res = isRegistering && allowSignup
         ? await signup({ idToken, displayName: name.trim() })
         : await login(idToken);
       const profile = res.data.user;
@@ -89,7 +93,7 @@ export default function Login() {
               return (
                 <button
                   key={role}
-                  onClick={() => setSelectedRole(role)}
+                  onClick={() => { setSelectedRole(role); setIsRegistering(false); }}
                   className={`w-full py-4 px-6 bg-white ${cfg.hoverBg} border ${cfg.border} ${cfg.hoverBorder} rounded-xl text-gray-900 font-semibold flex items-center justify-between transition-all duration-200 group hover:scale-[1.03] hover:shadow-lg ${cfg.shadow}`}
                 >
                   <div className="flex items-center gap-4">
@@ -326,13 +330,25 @@ export default function Login() {
           </div>
 
           <p className="mt-8 text-center text-sm text-gray-500">
-            {isRegistering ? "Already have an account?" : "Don't have an account?"}{" "}
-            <button
-              onClick={() => setIsRegistering(!isRegistering)}
-              className={`font-medium transition-all duration-200 hover:translate-x-0.5 ${cfg.text}`}
-            >
-              {isRegistering ? "Sign in instead" : "Create account"}
-            </button>
+            {selectedRole === "supervisor" ? (
+              <>
+                Supervisor accounts are provisioned by the campus administration.
+              </>
+            ) : selectedRole === "admin" ? (
+              <>
+                Admin accounts are managed by the system administrator.
+              </>
+            ) : (
+              <>
+                {isRegistering ? "Already have an account?" : "Don't have an account?"}{" "}
+                <button
+                  onClick={() => setIsRegistering(!isRegistering)}
+                  className={`font-medium transition-all duration-200 hover:translate-x-0.5 ${cfg.text}`}
+                >
+                  {isRegistering ? "Sign in instead" : "Create account"}
+                </button>
+              </>
+            )}
           </p>
         </div>
 
