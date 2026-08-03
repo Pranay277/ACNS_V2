@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AdminNotificationBell from './AdminNotificationBell';
 import { getIssues } from '../services/api';
+import { signOutUser } from '../services/auth';
 
 const NavbarAdmin = () => {
   const location = useLocation();
@@ -20,7 +21,7 @@ const NavbarAdmin = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('session_admin');
+    signOutUser();
     navigate('/');
   };
 

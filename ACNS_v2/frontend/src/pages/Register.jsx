@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth } from "../services/firebase";
+import { saveSession, saveUserProfile, getAuthErrorMessage } from "../services/auth";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -55,10 +58,22 @@ export default function Register() {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    setErrors({});
+    try {
+      const displayName = `${formData.firstName.trim()} ${formData.lastName.trim()}`;
+      const cred = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+      await updateProfile(cred.user, { displayName });
+      const token = await cred.user.getIdToken();
+      saveSession("user", cred.user, token);
       navigate("/user");
-    }, 1500);
+    } catch (err) {
+      setErrors({ form: getAuthErrorMessage(err) });
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (field) => (e) => {
@@ -245,6 +260,12 @@ export default function Register() {
                 </a>
               </span>
             </div>
+
+            {errors.form && (
+              <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-500/30 rounded-lg">
+                {errors.form}
+              </div>
+            )}
 
             <button
               type="submit"

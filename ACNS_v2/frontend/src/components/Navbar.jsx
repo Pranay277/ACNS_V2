@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
+import { signOutUser } from '../services/auth';
 
 const Navbar = () => {
   const location = useLocation();
@@ -21,7 +22,7 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
-    localStorage.removeItem('session_supervisor');
+    signOutUser();
     navigate('/');
   };
 

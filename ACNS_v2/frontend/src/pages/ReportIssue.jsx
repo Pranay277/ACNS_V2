@@ -4,6 +4,7 @@ import NavbarUser from "../components/NavbarUser";
 import CameraCapture from "../components/CameraCapture";
 import MapView from "../components/MapView";
 import { createIssue } from "../services/api";
+import { getSession } from "../services/auth";
 
 const mapCategory = (cat) => {
   const map = {
@@ -219,7 +220,7 @@ const [showCamera, setShowCamera] = useState(false);
 
     setIsSubmitting(true);
     try {
-      const user = { email: "user1@gmail.com" };
+      const user = { email: getSession("user")?.email || "user1@gmail.com" };
 
       const payload = {
         userId: user.email,

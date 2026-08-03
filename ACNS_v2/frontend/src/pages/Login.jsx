@@ -1,5 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "../services/firebase";
+import { saveSession, saveUserProfile, getAuthErrorMessage } from "../services/auth";
 
 export default function Login() {
   const [name, setName] = useState("");
@@ -36,13 +43,37 @@ export default function Login() {
     e.preventDefault();
     if (!validateForm()) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      localStorage.setItem("session_" + selectedRole, JSON.stringify({ email, role: selectedRole }));
+    setErrors({});
+    try {
+      let firebaseUser;
+      if (isRegistering) {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        firebaseUser = cred.user;
+        if (name.trim()) await updateProfile(firebaseUser, { displayName: name.trim() });
+        const roleName =
+          selectedRole === "supervisor"
+            ? "Supervisor"
+            : selectedRole === "admin"
+            ? "Admin"
+            : "Student";
+        try {
+          await saveUserProfile(firebaseUser, { name: name.trim(), role: roleName });
+        } catch (profileErr) {
+          console.error("Failed to save user profile:", profileErr);
+        }
+      } else {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        firebaseUser = cred.user;
+      }
+      const token = await firebaseUser.getIdToken();
+      saveSession(selectedRole, firebaseUser, token);
       if (selectedRole === "user") navigate("/user");
       else if (selectedRole === "supervisor") navigate("/supervisor");
       else navigate("/admin");
-    }, 1500);
+    } catch (err) {
+      setErrors({ form: getAuthErrorMessage(err) });
+      setIsLoading(false);
+    }
   };
 
   if (!selectedRole) {
@@ -239,6 +270,12 @@ export default function Login() {
                 <a href="#" className={`text-sm transition-all duration-200 hover:translate-x-0.5 ${cfg.text}`}>
                   Forgot password?
                 </a>
+              </div>
+            )}
+
+            {errors.form && (
+              <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                {errors.form}
               </div>
             )}
 

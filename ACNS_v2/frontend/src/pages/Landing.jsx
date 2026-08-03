@@ -199,18 +199,6 @@ export default function Landing() {
     });
   }, []);
 
-  const handleDemoLogin = (role) => {
-    const demoData = {
-      email: role === "admin" ? "admin@campus.edu" : role === "supervisor" ? "supervisor@campus.edu" : "demo@campus.edu",
-      role: role,
-      name: role === "admin" ? "Admin Demo" : role === "supervisor" ? "Supervisor Demo" : "Student Demo"
-    };
-    localStorage.setItem(`session_${role}`, JSON.stringify(demoData));
-    if (role === "user") navigate("/user");
-    else if (role === "supervisor") navigate("/supervisor");
-    else navigate("/admin");
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <style>{`
@@ -425,7 +413,7 @@ export default function Landing() {
             ].map(({ role, label, desc, icon }, i) => (
               <button
                 key={role}
-                onClick={() => handleDemoLogin(role)}
+                onClick={() => navigate("/login")}
                 style={{ animation: tryReveal.visible.includes(i) ? 'slideInUp 0.5s ease forwards' : 'none', opacity: tryReveal.visible.includes(i) ? 1 : 0 }}
                 className={`group p-6 bg-white rounded-xl shadow-sm border ${roleColors[role].border} ${roleColors[role].hover} hover:shadow-lg hover:-translate-y-1 transition-all duration-300`}
               >

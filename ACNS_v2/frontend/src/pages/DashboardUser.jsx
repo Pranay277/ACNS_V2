@@ -4,6 +4,7 @@ import NavbarUser from "../components/NavbarUser";
 import IssueCard from "../components/IssueCard";
 import MapView from "../components/MapView";
 import { getIssues, getNotifications } from "../services/api";
+import { getSession } from "../services/auth";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const useCountUp = (target, duration = 800) => {
@@ -42,7 +43,7 @@ export default function DashboardUser() {
   const [issues, setIssues] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const user = { email: "user1@gmail.com" }; // Mock integration
+  const user = { email: getSession("user")?.email || "user1@gmail.com" };
 
   const categories = [
     { id: "Infrastructure", label: "Infrastructure" },
