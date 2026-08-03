@@ -2,13 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getIssues } from '../services/api';
 import NavbarAdmin from '../components/NavbarAdmin';
 import MapView from '../components/MapView';
-
-const STATUS_CONFIG = {
-  Open:         { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-200',    dot: 'bg-red-500'    },
-  'In Progress':{ bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200', dot: 'bg-yellow-500' },
-  Resolved:     { bg: 'bg-green-100',  text: 'text-green-700',  border: 'border-green-200',  dot: 'bg-green-500'  },
-  Closed:       { bg: 'bg-gray-100',   text: 'text-gray-600',   border: 'border-gray-200',   dot: 'bg-gray-400'   },
-};
+import { STATUS_CONFIG } from '../constants/statusStyles';
 
 const FILTERS = ['All', 'Open', 'In Progress', 'Resolved', 'Closed'];
 

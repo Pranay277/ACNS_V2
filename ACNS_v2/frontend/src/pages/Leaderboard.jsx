@@ -1,28 +1,16 @@
 import { useState, useEffect } from "react";
 import NavbarUser from "../components/NavbarUser";
-import { getIssues } from "../services/api";
-
-const POINTS = { Resolved: 10, "In Progress": 5, Open: 2 };
-
-function isThisMonth(dateStr) {
-  if (!dateStr) return false;
-  const d = new Date(dateStr);
-  const now = new Date();
-  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-}
-
-function computeMonthlyLeaderboard(issues) {
-  const userMap = {};
-  issues.forEach((issue) => {
-    const email = issue.userId || issue.email || "unknown@campus.edu";
-    if (!userMap[email]) userMap[email] = { email, issues: 0, points: 0 };
-    userMap[email].issues++;
-    userMap[email].points += POINTS[issue.status] || 2;
-  });
-  return Object.values(userMap).sort((a, b) => b.points - a.points || b.issues - a.issues);
-}
+import { getLeaderboard, getUserGamification } from "../services/api";
 
 const medals = ["text-yellow-500", "text-gray-400", "text-amber-700"];
+
+// Maps the backend gamification profile shape to the shape the UI renders.
+const toLeaderboardUser = (u) => ({
+  email: u.userId,
+  displayName: u.displayName || u.userId,
+  issues: u.issuesReported || 0,
+  points: u.totalPoints || 0,
+});
 
 export default function Leaderboard() {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -40,18 +28,19 @@ export default function Leaderboard() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await getIssues({});
-        const all = Array.isArray(res.data) ? res.data : [];
-        const monthly = all.filter((i) => isThisMonth(i.createdAt || i.date || i.timestamp));
-        const pool = monthly.length >= 3 ? monthly : all;
-        const lb = computeMonthlyLeaderboard(pool);
-
-        const overallSorted = computeMonthlyLeaderboard(all);
-        const idx = overallSorted.findIndex((u) => u.email === userEmail);
-        setMyOverall(idx === -1 ? null : { rank: idx + 1, user: overallSorted[idx] });
-        setLeaderboard(lb);
+        const res = await getLeaderboard({ limit: 10 });
+        const entries = Array.isArray(res.data?.leaderboard) ? res.data.leaderboard : [];
+        setLeaderboard(entries.map(toLeaderboardUser));
       } catch {
         setLeaderboard([]);
+      }
+      try {
+        if (userEmail) {
+          const me = await getUserGamification(userEmail);
+          const user = me.data?.user;
+          setMyOverall(user ? { rank: user.rank, user: toLeaderboardUser(user) } : null);
+        }
+      } catch {
         setMyOverall(null);
       } finally {
         setLoading(false);
@@ -61,7 +50,7 @@ export default function Leaderboard() {
 
   const top5 = leaderboard.slice(0, 5);
   const myTop5Index = top5.findIndex((u) => u.email === userEmail);
-  const monthName = new Date().toLocaleString("default", { month: "long", year: "numeric" });
+  const monthName = "All-time leaderboard";
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -71,7 +60,7 @@ export default function Leaderboard() {
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Leaderboard</h1>
-            <p className="mt-1 text-gray-500">Who&apos;s making a difference this month</p>
+            <p className="mt-1 text-gray-500">Who&apos;s making a difference on campus</p>
           </div>
           {myOverall && (
             <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200">
@@ -101,7 +90,7 @@ export default function Leaderboard() {
               <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
                 <span className="text-xl">🔥</span>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Monthly Champions</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Top Reporters</h2>
                   <p className="text-xs text-gray-400">{monthName}</p>
                 </div>
               </div>
@@ -130,7 +119,7 @@ export default function Leaderboard() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-medium truncate ${isMe ? "text-primary-700" : "text-gray-900"}`}>
-                            {u.email}
+                            {u.displayName}
                             {isMe && <span className="ml-2 text-xs text-primary-500 font-semibold">(You)</span>}
                           </p>
                           <p className="text-xs text-gray-500">{u.issues} issue{u.issues !== 1 ? "s" : ""}</p>
@@ -153,7 +142,7 @@ export default function Leaderboard() {
                     <span className="text-lg font-bold text-gray-400">#{myOverall.rank}</span>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {myOverall.user.email}
+                        {myOverall.user.displayName}
                         <span className="ml-2 text-xs text-primary-500 font-semibold">(You)</span>
                       </p>
                       <p className="text-xs text-gray-500">{myOverall.user.issues} issue{myOverall.user.issues !== 1 ? "s" : ""}</p>

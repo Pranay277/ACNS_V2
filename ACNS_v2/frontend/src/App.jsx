@@ -11,6 +11,7 @@ import Leaderboard from "./pages/Leaderboard";
 import DashboardSupervisor from "./pages/DashboardSupervisor";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import AdminIssues from "./pages/AdminIssues";
+import IssueDetails from "./pages/IssueDetails";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -26,6 +27,7 @@ function AnimatedRoutes() {
         <Route path="/user/navigate" element={<UserNavigate />} />
         <Route path="/user/leaderboard" element={<Leaderboard />} />
         <Route path="/supervisor" element={<DashboardSupervisor />} />
+        <Route path="/issues/:campusId/:issueId" element={<IssueDetails />} />
         <Route path="/admin" element={<DashboardAdmin />} />
         <Route path="/admin/issues" element={<AdminIssues />} />
       </Routes>

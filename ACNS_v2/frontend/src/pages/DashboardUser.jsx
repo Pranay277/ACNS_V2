@@ -4,6 +4,7 @@ import NavbarUser from "../components/NavbarUser";
 import IssueCard from "../components/IssueCard";
 import MapView from "../components/MapView";
 import { getIssues, getNotifications } from "../services/api";
+import { STATUS_BADGE_STYLES_WITHOUT_CLOSED, STATUS_PILL_STYLES, GRAY_STATUS_BADGE } from "../constants/statusStyles";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const useCountUp = (target, duration = 800) => {
@@ -42,7 +43,21 @@ export default function DashboardUser() {
   const [issues, setIssues] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const user = { email: "user1@gmail.com" }; // Mock integration
+
+  const user = useMemo(() => {
+    try {
+      const session = JSON.parse(localStorage.getItem("session_user") || "{}");
+      if (session.email) {
+        return {
+          email: session.email,
+          name: session.name || session.displayName || session.email,
+          uid: session.uid,
+          campusId: session.campusId,
+        };
+      }
+    } catch {}
+    return { email: "user1@gmail.com", name: "Student User" };
+  }, []);
 
   const categories = [
     { id: "Infrastructure", label: "Infrastructure" },
@@ -370,12 +385,7 @@ export default function DashboardUser() {
                       <p className="text-sm font-medium text-gray-900 truncate">{issue.description || 'No description'}</p>
                       <p className="text-xs text-gray-500">{new Date(issue.updatedAt || issue.createdAt).toLocaleDateString()}</p>
                     </div>
-                    <span className={`ml-3 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      issue.status === "Open" ? "bg-red-100 text-red-800" :
-                      issue.status === "In Progress" ? "bg-yellow-100 text-yellow-800" :
-                      issue.status === "Resolved" ? "bg-green-100 text-green-800" :
-                      "bg-gray-100 text-gray-600"
-                    }`}>{issue.status}</span>
+                    <span className={`ml-3 px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_PILL_STYLES[issue.status] || STATUS_PILL_STYLES.Closed}`}>{issue.status}</span>
                   </div>
                 ))}
               </div>
@@ -461,12 +471,7 @@ export default function DashboardUser() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <span className="text-base font-bold text-gray-900">Issue Report</span>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                  selectedIssue.status === "Open" ? "bg-red-100 text-red-800 border-red-200" :
-                  selectedIssue.status === "In Progress" ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
-                  selectedIssue.status === "Resolved" ? "bg-green-100 text-green-800 border-green-200" :
-                  "bg-gray-100 text-gray-600 border-gray-200"
-                }`}>{selectedIssue.status}</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_BADGE_STYLES_WITHOUT_CLOSED[selectedIssue.status] || GRAY_STATUS_BADGE}`}>{selectedIssue.status}</span>
               </div>
               <button
                 onClick={() => setSelectedIssue(null)}

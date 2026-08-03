@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth, mapFirebaseAuthError } from "../services/firebase";
+import { signup } from "../services/api";
+import { SMS_LANGUAGE_OPTIONS, DEFAULT_SMS_LANGUAGE } from "../constants/languages";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -9,6 +13,7 @@ export default function Register() {
     email: "",
     password: "",
     confirmPassword: "",
+    preferredLanguage: DEFAULT_SMS_LANGUAGE,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -55,10 +60,38 @@ export default function Register() {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    setErrors({});
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+      const idToken = await userCredential.user.getIdToken();
+      const displayName = `${formData.firstName} ${formData.lastName}`.trim();
+
+      const res = await signup({
+        idToken,
+        displayName,
+        preferredLanguage: formData.preferredLanguage,
+      });
+      const profile = res.data.user;
+
+      localStorage.setItem("session_" + profile.role, JSON.stringify({
+        email: profile.email,
+        role: profile.role,
+        name: profile.displayName,
+        uid: profile.uid,
+        campusId: profile.campusId,
+      }));
+
       navigate("/user");
-    }, 1500);
+    } catch (err) {
+      console.error("Signup failed:", err);
+      setErrors({ form: mapFirebaseAuthError(err) });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (field) => (e) => {
@@ -229,6 +262,32 @@ export default function Register() {
               {errors.confirmPassword && <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>}
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                SMS Language
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {SMS_LANGUAGE_OPTIONS.map((lang) => (
+                  <button
+                    type="button"
+                    key={lang.code}
+                    onClick={() => setFormData({ ...formData, preferredLanguage: lang.code })}
+                    className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                      formData.preferredLanguage === lang.code
+                        ? "bg-emerald-500/15 border-emerald-400 text-emerald-300"
+                        : "bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                    }`}
+                  >
+                    {lang.label}
+                    <span className="block mt-0.5 text-[11px] font-normal opacity-70">{lang.hint}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Supervisors receive SMS notifications in this language.
+              </p>
+            </div>
+
             <div className="flex items-start">
               <input
                 type="checkbox"
@@ -245,6 +304,15 @@ export default function Register() {
                 </a>
               </span>
             </div>
+
+            {errors.form && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-300 flex items-start gap-2">
+                <svg className="w-5 h-5 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span>{errors.form}</span>
+              </div>
+            )}
 
             <button
               type="submit"

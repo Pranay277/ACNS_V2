@@ -219,7 +219,12 @@ const [showCamera, setShowCamera] = useState(false);
 
     setIsSubmitting(true);
     try {
-      const user = { email: "user1@gmail.com" };
+      let userEmail = "user1@gmail.com";
+      try {
+        const session = JSON.parse(localStorage.getItem("session_user") || "{}");
+        if (session.email) userEmail = session.email;
+      } catch {}
+      const user = { email: userEmail };
 
       const payload = {
         userId: user.email,
@@ -235,7 +240,13 @@ const [showCamera, setShowCamera] = useState(false);
 
       const res = await createIssue(payload);
 
-      if (res.data && res.data.duplicate) {
+      if (res.data && res.data.alreadyReported) {
+        alert(res.data.message || "You have already reported this issue. No points were awarded.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (res.data && res.data.merged) {
         alert("This issue has already been reported! Your report has been successfully merged to help increase its priority.");
         setIsSubmitting(false);
         return;
