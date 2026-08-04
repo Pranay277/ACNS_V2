@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 import { signOutUser } from '../services/auth';
+import acnsLogo from '../assets/acns-logo2.png';
 
 const NavbarUser = () => {
   const location = useLocation();
@@ -31,9 +32,7 @@ const NavbarUser = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link to="/user" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-primary-600 hover:text-primary-700 transition-colors">
-              SCIARS
-            </span>
+            <img src={acnsLogo} alt="ACNS Logo" className="h-14 w-auto object-contain" />
             <span className="px-3 py-1 text-base font-bold bg-primary-100 text-primary-700 rounded uppercase tracking-wide">
               User
             </span>

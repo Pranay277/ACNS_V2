@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 import { signOutUser } from '../services/auth';
+import acnsLogo from '../assets/acns-logo.png';
 
 const Navbar = () => {
   const location = useLocation();
@@ -25,7 +26,6 @@ const Navbar = () => {
     signOutUser();
     navigate('/');
   };
-
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

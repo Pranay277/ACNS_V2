@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import acnsLogo from "../assets/acns-logo2.png";
 
 const useCountUp = (target, duration = 1200) => {
   const [count, setCount] = useState(0);
@@ -240,9 +241,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <span className="text-xl font-bold text-primary-600 hover:text-primary-700 transition-colors">
-                SCIARS
-              </span>
+              <img src={acnsLogo} alt="ACNS Logo" className="h-14 w-auto object-contain" />
             </div>
             <button
               onClick={() => navigate("/login")}

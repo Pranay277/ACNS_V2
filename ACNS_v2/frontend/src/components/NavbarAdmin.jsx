@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AdminNotificationBell from './AdminNotificationBell';
 import { getIssues } from '../services/api';
 import { signOutUser } from '../services/auth';
+import acnsLogo from '../assets/acns-logo2.png';
 
 const NavbarAdmin = () => {
   const location = useLocation();
@@ -47,19 +48,10 @@ const NavbarAdmin = () => {
 
           {/* Brand */}
           <Link to="/admin" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
-                SCIARS
-              </span>
-              <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-100 text-indigo-700 rounded uppercase tracking-wide">
-                Admin
-              </span>
-            </div>
+            <img src={acnsLogo} alt="ACNS Logo" className="h-14 w-auto object-contain" />
+            <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-100 text-indigo-700 rounded uppercase tracking-wide">
+              Admin
+            </span>
           </Link>
 
           {/* Desktop Nav Links */}
