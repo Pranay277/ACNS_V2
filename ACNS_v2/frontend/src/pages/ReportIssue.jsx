@@ -4,6 +4,7 @@ import NavbarUser from "../components/NavbarUser";
 import CameraCapture from "../components/CameraCapture";
 import MapView from "../components/MapView";
 import { createIssue } from "../services/api";
+import { MAX_IMAGE_BYTES, dataUrlByteSize } from "../utils/imageDataUrl";
 
 const mapCategory = (cat) => {
   const map = {
@@ -107,6 +108,10 @@ const [showCamera, setShowCamera] = useState(false);
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > MAX_IMAGE_BYTES) {
+        setErrors((prev) => ({ ...prev, image: `Image is too large. Maximum size is ${MAX_IMAGE_BYTES / 1024}KB.` }));
+        return;
+      }
       setFormData({ ...formData, image: file });
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result);
@@ -216,6 +221,11 @@ const [showCamera, setShowCamera] = useState(false);
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    if (formData.image && dataUrlByteSize(imagePreview) > MAX_IMAGE_BYTES) {
+      setErrors((prev) => ({ ...prev, image: `Image is too large. Maximum size is ${MAX_IMAGE_BYTES / 1024}KB.` }));
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -520,7 +530,7 @@ const [showCamera, setShowCamera] = useState(false);
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <p className="mt-2 text-sm text-gray-500">Drag and drop or click to upload</p>
-                    <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+                    <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 512KB</p>
                   </div>
                 )}
                 {!imagePreview && (

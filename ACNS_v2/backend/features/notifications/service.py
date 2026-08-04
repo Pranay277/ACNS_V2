@@ -32,8 +32,9 @@ from datetime import datetime
 from core.config import DEFAULT_CAMPUS_ID, DEFAULT_PREFERRED_LANGUAGE, FRONTEND_BASE_URL
 from core.firebase import db
 from features.profile.service import get_user_profile, resolve_uid
-from features.sms import service as sms_service
 
+from features.sms import counters as sms_counters
+from features.sms import service as sms_service
 logger = logging.getLogger(__name__)
 
 
@@ -244,6 +245,21 @@ def _dispatch_assignment_sms(
     profile = get_user_profile(supervisor_uid)
     phone = _phone_from_profile(supervisor_uid, profile)
     if not phone:
+        return
+
+    # P2-06: reserve an SMS dispatch slot for this supervisor. When the daily
+    # cap or the dispatch cooldown is active the SMS is skipped — the in-app
+    # notification and the issue workflow are unaffected. The counter is
+    # independent of (and never weakens) the one-SMS-per-issue duplicate guard.
+    allowed, retry_after = sms_counters.increment_sms_counter(supervisor_uid)
+    if not allowed:
+        logger.warning(
+            "SMS dispatch skipped for supervisor '%s' on issue %s: "
+            "daily cap or cooldown active (retry_after=%s)",
+            supervisor_uid,
+            issue_id,
+            retry_after,
+        )
         return
 
     # Preferred language comes from the supervisor's profile. Missing or

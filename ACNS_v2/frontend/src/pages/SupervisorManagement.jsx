@@ -12,6 +12,7 @@ import {
 } from '../services/api';
 import { SMS_LANGUAGE_OPTIONS, DEFAULT_SMS_LANGUAGE } from '../constants/languages';
 import { DEPARTMENT_OPTIONS } from '../constants/departments';
+import { validatePassword } from '../utils/passwordPolicy';
 
 const STATUS_FILTERS = ['All', 'Active', 'Inactive'];
 
@@ -248,7 +249,8 @@ export default function SupervisorManagement() {
   const handleReset = async (e) => {
     e.preventDefault();
     setResetError('');
-    if (resetForm.newPassword.length < 6) return setResetError('Password must be at least 6 characters.');
+    const policyError = validatePassword(resetForm.newPassword);
+    if (policyError) return setResetError(policyError);
     if (resetForm.newPassword !== resetForm.confirm) return setResetError('Passwords do not match.');
     setResetSaving(true);
     try {
@@ -587,7 +589,7 @@ export default function SupervisorManagement() {
         <Modal title={`Reset Password — ${resetTarget.email}`} onClose={() => setResetTarget(null)}>
           <form onSubmit={handleReset} className="space-y-4">
             <Field label="New Password">
-              <input type="password" value={resetForm.newPassword} onChange={setResetField('newPassword')} placeholder="At least 6 characters" className={inputCls(false)} />
+              <input type="password" value={resetForm.newPassword} onChange={setResetField('newPassword')} placeholder="At least 8 chars with upper, lower, digit & special" className={inputCls(false)} />
             </Field>
             <Field label="Confirm Password">
               <input type="password" value={resetForm.confirm} onChange={setResetField('confirm')} placeholder="Re-enter new password" className={inputCls(false)} />

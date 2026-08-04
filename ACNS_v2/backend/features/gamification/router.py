@@ -3,13 +3,22 @@ features/gamification/router.py — REST endpoints for the Gamification module.
 
 All business logic lives in features/gamification/service.py; this router only
 validates input and maps results to HTTP responses.
+
+Authorization model:
+    * GET /leaderboard      any authenticated user (public leaderboard).
+    * GET /user/{userId}    the profile owner or an admin.
+    * POST /award           admin only (manual point awards).
 """
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from core.config import LEADERBOARD_DEFAULT_LIMIT, LEADERBOARD_MAX_LIMIT, POINTS_BY_REWARD
+from core.auth import CurrentUser
+from core.config import GENERIC_INTERNAL_ERROR_MESSAGE, LEADERBOARD_DEFAULT_LIMIT, LEADERBOARD_MAX_LIMIT, POINTS_BY_REWARD
+from core.ownership import require_self_or_admin
+from core.permissions import require_admin, require_authenticated
+from core.ratelimit import rate_limited
 from features.gamification import service as gamification
 from features.gamification.schemas import GamificationAward
 
@@ -19,19 +28,26 @@ router = APIRouter()
 
 
 @router.get("/leaderboard")
-def get_leaderboard(limit: int = Query(LEADERBOARD_DEFAULT_LIMIT, ge=1, le=LEADERBOARD_MAX_LIMIT)):
+def get_leaderboard(
+    limit: int = Query(LEADERBOARD_DEFAULT_LIMIT, ge=1, le=LEADERBOARD_MAX_LIMIT),
+    current_user: CurrentUser = Depends(require_authenticated),
+):
     """Top users by total points. Each entry includes rank, points, and report counts."""
     try:
         entries = gamification.get_leaderboard(limit=limit)
         return {"success": True, "leaderboard": entries}
     except Exception as e:
         logger.error("Failed to fetch leaderboard: %s", e)
-        raise HTTPException(status_code=500, detail={"success": False, "message": str(e)})
+        raise HTTPException(status_code=500, detail={"success": False, "message": GENERIC_INTERNAL_ERROR_MESSAGE})
 
 
 @router.get("/user/{userId}")
-def get_user(userId: str):
-    """Gamification profile (points, stats, current rank) for a single user."""
+def get_user(
+    userId: str,
+    current_user: CurrentUser = Depends(require_authenticated),
+):
+    """Gamification profile (points, stats, current rank). Only the owner or an admin."""
+    require_self_or_admin(userId, current_user)
     try:
         profile = gamification.get_user_profile(userId)
         if not profile:
@@ -45,13 +61,17 @@ def get_user(userId: str):
         raise
     except Exception as e:
         logger.error("Failed to fetch gamification profile for %s: %s", userId, e)
-        raise HTTPException(status_code=500, detail={"success": False, "message": str(e)})
+        raise HTTPException(status_code=500, detail={"success": False, "message": GENERIC_INTERNAL_ERROR_MESSAGE})
 
 
 @router.post("/award")
-def award(payload: GamificationAward):
+def award(
+    payload: GamificationAward,
+    _: None = Depends(rate_limited("gamification_award")),
+    current_user: CurrentUser = Depends(require_admin),
+):
     """
-    Award points to a user (idempotent per ``issueId``).
+    Award points to a user (idempotent per ``issueId``). Admin-only.
 
     If ``points`` is omitted, the value configured for ``reason`` is used.
     This endpoint is the general hook for future reward types.
@@ -80,4 +100,4 @@ def award(payload: GamificationAward):
         raise
     except Exception as e:
         logger.error("Failed to award points: %s", e)
-        raise HTTPException(status_code=500, detail={"success": False, "message": str(e)})
+        raise HTTPException(status_code=500, detail={"success": False, "message": GENERIC_INTERNAL_ERROR_MESSAGE})

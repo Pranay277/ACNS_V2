@@ -1,4 +1,6 @@
 import axios from "axios";
+import { auth } from "./firebase";
+import { clearSession, isAuthenticated, notifyReauthRequired } from "./session";
 
 // Base URL is environment-driven. Create a frontend/.env file (see
 // frontend/.env.example) to point the app at a deployed backend, e.g.
@@ -6,6 +8,44 @@ import axios from "axios";
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api"
 });
+
+// Every request is authenticated with the signed-in Firebase user's ID token
+// (the backend verifies it and derives the caller's role/identity server-side).
+// Login/signup are the only public endpoints; the backend ignores this header
+// there and expects the token in the request body instead.
+API.interceptors.request.use(async (config) => {
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (err) {
+    console.warn("Could not attach auth token:", err);
+  }
+  return config;
+});
+
+// Response interceptor (P2-03):
+//  * 403 + code REAUTH_REQUIRED → the token is valid but the auth_time claim is
+//    older than FRESH_AUTH_MAX_AGE_SECONDS. Tag the error and notify the
+//    ReauthModal so the user can re-enter their password (do NOT log out).
+//  * Any other 401 while a session exists → the ID token is invalid, expired,
+//    or revoked (e.g. admin deactivated the account or reset its password
+//    server-side). Clear the session so route guards force a clean re-login.
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const code = error.response?.data?.code;
+    if (status === 403 && code === "REAUTH_REQUIRED") {
+      error.reauthRequired = true;
+      notifyReauthRequired();
+    } else if (status === 401 && isAuthenticated()) {
+      clearSession();
+    }
+    return Promise.reject(error);
+  }
+);
 
 // AUTH & USERS
 export const login = (idToken) => API.post("/auth/login", { idToken });

@@ -1,5 +1,12 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import PageTransition from "./components/PageTransition";
+import ReauthModal from "./components/ReauthModal";
+import {
+  ProtectedRoute,
+  RequireStudent,
+  RequireSupervisor,
+  RequireAdmin,
+} from "./components/guards";
 
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -21,19 +28,58 @@ function AnimatedRoutes() {
   return (
     <PageTransition key={location.pathname}>
       <Routes location={location}>
+        {/* Public routes */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/report" element={<ReportIssue />} />
-        <Route path="/user" element={<DashboardUser />} />
-        <Route path="/user/navigate" element={<UserNavigate />} />
-        <Route path="/user/leaderboard" element={<Leaderboard />} />
-        <Route path="/supervisor" element={<DashboardSupervisor />} />
-        <Route path="/supervisor/profile" element={<SupervisorProfile />} />
-        <Route path="/issues/:campusId/:issueId" element={<IssueDetails />} />
-        <Route path="/admin" element={<DashboardAdmin />} />
-        <Route path="/admin/issues" element={<AdminIssues />} />
-        <Route path="/admin/supervisors" element={<SupervisorManagement />} />
+
+        {/* Student routes */}
+        <Route
+          path="/report"
+          element={<RequireStudent><ReportIssue /></RequireStudent>}
+        />
+        <Route
+          path="/user"
+          element={<RequireStudent><DashboardUser /></RequireStudent>}
+        />
+        <Route
+          path="/user/navigate"
+          element={<RequireStudent><UserNavigate /></RequireStudent>}
+        />
+        <Route
+          path="/user/leaderboard"
+          element={<RequireStudent><Leaderboard /></RequireStudent>}
+        />
+
+        {/* Supervisor routes */}
+        <Route
+          path="/supervisor"
+          element={<RequireSupervisor><DashboardSupervisor /></RequireSupervisor>}
+        />
+        <Route
+          path="/supervisor/profile"
+          element={<RequireSupervisor><SupervisorProfile /></RequireSupervisor>}
+        />
+
+        {/* Shared authenticated route (issue detail via SMS links) */}
+        <Route
+          path="/issues/:campusId/:issueId"
+          element={<ProtectedRoute><IssueDetails /></ProtectedRoute>}
+        />
+
+        {/* Admin routes */}
+        <Route
+          path="/admin"
+          element={<RequireAdmin><DashboardAdmin /></RequireAdmin>}
+        />
+        <Route
+          path="/admin/issues"
+          element={<RequireAdmin><AdminIssues /></RequireAdmin>}
+        />
+        <Route
+          path="/admin/supervisors"
+          element={<RequireAdmin><SupervisorManagement /></RequireAdmin>}
+        />
       </Routes>
     </PageTransition>
   );
@@ -43,6 +89,7 @@ function App() {
   return (
     <BrowserRouter>
       <AnimatedRoutes />
+      <ReauthModal />
     </BrowserRouter>
   );
 }

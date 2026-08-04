@@ -1,0 +1,37 @@
+# SCIARS single-host deployment (P2-11).
+#
+#   docker compose up --build -d
+#
+# Before running:
+#   1. cp backend/.env.example backend/.env and set ENVIRONMENT=production,
+#      CORS_ALLOWED_ORIGINS, TEXTBEE_*, FRONTEND_BASE_URL, and the SMS abuse
+#      / rate-limit values.
+#   2. Place backend/serviceAccountKey.json (gitignored) on the host.
+#   3. (Recommended) Put an HTTPS-terminating reverse proxy in front of the
+#      frontend service — see DEPLOYMENT.md.
+#
+# The frontend is built with VITE_API_URL=/api and Nginx proxies /api to the
+# backend, so the browser talks to a single origin and CORS stays trivial.
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      - ENVIRONMENT=production
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/serviceAccountKey.json:/app/serviceAccountKey.json:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

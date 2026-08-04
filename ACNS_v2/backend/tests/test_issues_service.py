@@ -37,7 +37,7 @@ def test_create_issue_rejects_invalid_category():
         locationText="somewhere",
     )
     with pytest.raises(HTTPException) as exc:
-        create_issue(issue)
+        create_issue(issue, reporter_uid="student-uid-1")
     assert exc.value.status_code == 400
     assert "Invalid category. Must be one of:" in exc.value.detail["message"]
 

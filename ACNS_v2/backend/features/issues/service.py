@@ -39,6 +39,7 @@ from features.issues.schemas import IssueCreate, IssueStatusUpdate, VerifyIssue
 from features.navigation.service import nearest_landmark
 from features.notifications.service import create_notification, notify_issue_assigned
 from features.profile.service import get_user_profile, resolve_uid
+from features.sms.counters import increment_issue_counter
 from features.supervisors.service import resolve_assigned_supervisor
 
 logger = logging.getLogger(__name__)
@@ -163,7 +164,57 @@ def _merge_issue_transaction(transaction, issue_ref, user_id, user_email=None):
     }
 
 
-def create_issue(issue: IssueCreate) -> dict:
+def _assignment_sms_sent(issue_id: str) -> bool:
+    """
+    Return True when the assignment SMS was already dispatched for the issue.
+
+    Read from the issue document's persistent ``smsSent`` flag, so the
+    one-SMS-per-issue guarantee survives server restarts.
+    """
+    doc = db.collection("issues").document(issue_id).get()
+    if not doc.exists:
+        return False
+    return bool((doc.to_dict() or {}).get("smsSent"))
+
+
+def _mark_assignment_sms_sent(issue_id: str) -> None:
+    """Persist that the assignment SMS was dispatched for the issue."""
+    db.collection("issues").document(issue_id).update(
+        {"smsSent": True, "smsSentAt": datetime.utcnow().isoformat()}
+    )
+
+
+def _dispatch_assignment_sms_once(
+    issue_id: str,
+    supervisor_uid: str,
+    category: str,
+    location_text: str,
+) -> bool:
+    """
+    Dispatch the assignment SMS at most once per issue.
+
+    The persistent ``smsSent``/``smsSentAt`` flags live on the issue document,
+    so duplicate reports can never trigger a second SMS and the guarantee
+    survives server restarts. A new issue (a fresh document) always starts with
+    ``smsSent=False`` and sends its own first SMS.
+
+    Returns True when a dispatch was attempted, False when the SMS was already
+    sent for this issue.
+    """
+    if _assignment_sms_sent(issue_id):
+        logger.info("Assignment SMS already sent for issue %s; skipping.", issue_id)
+        return False
+    notify_issue_assigned(
+        issue_id=issue_id,
+        supervisor_email=supervisor_uid,
+        category=category,
+        location_text=location_text,
+    )
+    _mark_assignment_sms_sent(issue_id)
+    return True
+
+
+def create_issue(issue: IssueCreate, reporter_uid: str, reporter_email: str = None) -> dict:
     if issue.category not in CATEGORY_MAP:
         raise HTTPException(
             status_code=400,
@@ -175,12 +226,12 @@ def create_issue(issue: IssueCreate) -> dict:
 
     issues_ref = db.collection("issues")
 
-    # Reporter identity is the Firebase UID (primary key). Legacy clients may
-    # send an email — resolve it to a uid; the original email is kept only for
-    # matching pre-migration ``reportedBy`` arrays.
-    reporter_email = (issue.userId or "").strip().lower()
-    reporter_uid = resolve_uid(reporter_email) or reporter_email
-    if "@" not in reporter_uid:
+    # Reporter identity comes from the authenticated caller (CurrentUser), NEVER
+    # from the request body. ``issue.userId`` is ignored entirely. The email is
+    # kept only for matching pre-migration ``reportedBy`` arrays that store
+    # emails instead of uids.
+    reporter_email = (reporter_email or "").strip().lower() or None
+    if reporter_email and "@" not in reporter_email:
         reporter_email = None
 
     # Campus: validate the frontend-selected college, fall back to the
@@ -241,6 +292,22 @@ def create_issue(issue: IssueCreate) -> dict:
     # falling back to the legacy CATEGORY_MAP for pre-department deployments.
     assigned_to = resolve_assigned_supervisor(issue.category)
 
+    # P2-06: per-user daily cap on NEW issues created. Duplicate reports are
+    # counted separately (they merge above) and never consume this budget.
+    # The persisted counter fails open, so a counter outage can never block a
+    # legitimate report.
+    if not increment_issue_counter(reporter_uid):
+        logger.warning(
+            "Issue creation blocked by daily cap for user %s", reporter_uid
+        )
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "success": False,
+                "message": "Daily issue limit reached. Please try again tomorrow.",
+            },
+        )
+
     new_issue = {
         "userId": reporter_uid,
         "category": issue.category,
@@ -264,6 +331,8 @@ def create_issue(issue: IssueCreate) -> dict:
         "supervisorEmail": None,
         "supervisorPhoto": None,
         "supervisorDescription": None,
+        "smsSent": False,
+        "smsSentAt": None,
     }
 
     issue_ref = issues_ref.document()
@@ -277,9 +346,9 @@ def create_issue(issue: IssueCreate) -> dict:
         issue_id=issue_id,
     )
 
-    notify_issue_assigned(
+    _dispatch_assignment_sms_once(
         issue_id=issue_id,
-        supervisor_email=assigned_to,
+        supervisor_uid=assigned_to,
         category=issue.category,
         location_text=issue.locationText,
     )

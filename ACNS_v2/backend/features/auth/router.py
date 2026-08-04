@@ -12,14 +12,18 @@ passes the resulting ID token here. The backend never sees a password.
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from core.auth import CurrentUser
 from core.config import (
     DEFAULT_PREFERRED_LANGUAGE,
     DEFAULT_ROLE,
     VALID_PREFERRED_LANGUAGES,
     VALID_ROLES,
 )
+from core.ownership import require_self_or_admin
+from core.permissions import require_admin, require_authenticated, require_recent_auth
+from core.ratelimit import rate_limited
 from features.auth import service as auth_service
 from features.auth.schemas import LoginRequest, SignupRequest, UserUpdateRequest
 from features.profile import service as profile_service
@@ -47,7 +51,7 @@ def _error(status_code: int, message: str):
 
 
 @router.post("/login")
-def login(payload: LoginRequest):
+def login(payload: LoginRequest, _: None = Depends(rate_limited("login"))):
     """
     Authenticate a Firebase ID token and return the user profile.
 
@@ -76,7 +80,7 @@ def login(payload: LoginRequest):
 
 
 @router.post("/signup")
-def signup(payload: SignupRequest):
+def signup(payload: SignupRequest, _: None = Depends(rate_limited("signup"))):
     """
     Register a new user.
 
@@ -111,8 +115,12 @@ def signup(payload: SignupRequest):
 
 
 @router.get("/profile/{userId}")
-def get_profile(userId: str):
-    """Return a single user profile by email (doc id)."""
+def get_profile(
+    userId: str,
+    current_user: CurrentUser = Depends(require_authenticated),
+):
+    """Return a single user profile by email (doc id). Only the owner or an admin."""
+    require_self_or_admin(userId, current_user)
     profile = profile_service.get_user_profile(userId)
     if not profile:
         raise _error(404, f"User profile not found for '{userId}'")
@@ -120,8 +128,12 @@ def get_profile(userId: str):
 
 
 @router.get("/uid/{uid}")
-def get_profile_by_uid(uid: str):
-    """Return a single user profile by Firebase Auth uid."""
+def get_profile_by_uid(
+    uid: str,
+    current_user: CurrentUser = Depends(require_authenticated),
+):
+    """Return a single user profile by Firebase Auth uid. Only the owner or an admin."""
+    require_self_or_admin(uid, current_user)
     profile = profile_service.get_user_by_uid(uid)
     if not profile:
         raise _error(404, f"User profile not found for uid '{uid}'")
@@ -131,16 +143,22 @@ def get_profile_by_uid(uid: str):
 @router.get("/users")
 def list_users(
     includeInactive: bool = Query(False, description="Include disabled accounts"),
+    current_user: CurrentUser = Depends(require_admin),
 ):
-    """List user profiles (defaults to active accounts only)."""
+    """List user profiles (defaults to active accounts only). Admin-only."""
     return {"success": True, "users": profile_service.list_users(include_inactive=includeInactive)}
 
 
 @router.patch("/users/{userId}")
-def update_user(userId: str, payload: UserUpdateRequest):
+def update_user(
+    userId: str,
+    payload: UserUpdateRequest,
+    current_user: CurrentUser = Depends(require_admin),
+):
     """
     Update profile fields (displayName, campusId, role, phoneNumber).
     Role changes are restricted to valid roles; disallowed keys are ignored.
+    Admin-only — prevents any caller from escalating their own role.
     """
     try:
         updates = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
@@ -156,15 +174,31 @@ def update_user(userId: str, payload: UserUpdateRequest):
 
 
 @router.post("/users/{userId}/deactivate")
-def deactivate_user(userId: str):
-    """Disable a user account (soft delete)."""
+def deactivate_user(
+    userId: str,
+    current_user: CurrentUser = Depends(require_admin),
+    _fresh: CurrentUser = Depends(require_recent_auth),
+):
+    """Disable a user account (soft delete). Admin-only; requires fresh auth."""
     profile = profile_service.set_user_active(userId, False)
+    # Revoke the user's refresh tokens so existing ID tokens stop validating
+    # immediately (verify_id_token runs with check_revoked=True). Best-effort.
+    try:
+        uid = profile_service.resolve_uid(userId)
+        if uid:
+            auth_service.revoke_refresh_tokens(uid)
+    except Exception as e:  # noqa: BLE001
+        logger.error("Could not revoke refresh tokens on deactivate: %s", e)
     return {"success": True, "user": profile}
 
 
 @router.post("/users/{userId}/activate")
-def activate_user(userId: str):
-    """Re-enable a disabled user account."""
+def activate_user(
+    userId: str,
+    current_user: CurrentUser = Depends(require_admin),
+    _fresh: CurrentUser = Depends(require_recent_auth),
+):
+    """Re-enable a disabled user account. Admin-only; requires fresh auth."""
     profile = profile_service.set_user_active(userId, True)
     return {"success": True, "user": profile}
 

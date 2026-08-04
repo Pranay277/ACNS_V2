@@ -18,7 +18,7 @@ language, loads the matching template, builds the body, and dispatches it.
 import logging
 
 from core.config import SMS_PROVIDER
-from features.sms.provider import AndroidGatewayProvider
+from features.sms.provider import AndroidGatewayProvider, mask_phone
 from features.sms import templates as sms_templates
 
 logger = logging.getLogger(__name__)
@@ -64,10 +64,15 @@ def send_sms(phone_number: str, message: str) -> bool:
 
     try:
         _provider.send_sms(str(phone_number).strip(), message)
-        logger.info("SMS dispatched to %s via %s", phone_number, type(_provider).__name__)
+        # P2-07: phone numbers are masked in logs; the SMS body is never logged.
+        logger.info(
+            "SMS dispatched to %s via %s",
+            mask_phone(phone_number),
+            type(_provider).__name__,
+        )
         return True
     except Exception as exc:  # noqa: BLE001 — provider failures must not break the workflow
-        logger.error("SMS dispatch failed for %s: %s", phone_number, exc)
+        logger.error("SMS dispatch failed for %s: %s", mask_phone(phone_number), exc)
         return False
 
 

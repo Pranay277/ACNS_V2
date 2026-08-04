@@ -3,6 +3,7 @@ import { getIssues } from '../services/api';
 import NavbarAdmin from '../components/NavbarAdmin';
 import MapView from '../components/MapView';
 import { STATUS_CONFIG } from '../constants/statusStyles';
+import safeUrl from '../utils/safeUrl';
 
 const FILTERS = ['All', 'Open', 'In Progress', 'Resolved', 'Closed'];
 
@@ -281,14 +282,14 @@ export default function AdminIssues() {
                               : '—'}
                           </p>
                         </div>
-                        {issue.imageUrl && (
+                        {safeUrl(issue.imageUrl) && (
                           <div className="sm:col-span-2 lg:col-span-4">
                             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Reported Image</p>
                             <img 
-                              src={issue.imageUrl} 
+                              src={safeUrl(issue.imageUrl)} 
                               alt="Issue" 
                               className="max-h-48 rounded-lg border border-gray-200 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => setImageModal(issue.imageUrl)}
+                              onClick={() => setImageModal(safeUrl(issue.imageUrl))}
                             />
                           </div>
                         )}
@@ -310,39 +311,39 @@ export default function AdminIssues() {
                                   <p className="text-sm text-gray-700">{issue.supervisorDescription}</p>
                                 </div>
                               )}
-                              {issue.supervisorPhoto && (
+                              {safeUrl(issue.supervisorPhoto) && (
                                 <div>
                                   <p className="text-xs text-gray-500 mb-1">Supervisor Photo</p>
                                   <img 
-                                    src={issue.supervisorPhoto} 
+                                    src={safeUrl(issue.supervisorPhoto)} 
                                     alt="Supervisor" 
                                     className="w-16 h-16 rounded-full border border-gray-300 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                    onClick={() => setImageModal(issue.supervisorPhoto)}
+                                    onClick={() => setImageModal(safeUrl(issue.supervisorPhoto))}
                                   />
                                 </div>
                               )}
-                              {issue.proofImageUrl && issue.status !== 'Resolved' && (
+                              {safeUrl(issue.proofImageUrl) && issue.status !== 'Resolved' && (
                                 <div>
                                   <p className="text-xs text-gray-500 mb-1">Proof Photo</p>
                                   <img 
-                                    src={issue.proofImageUrl} 
+                                    src={safeUrl(issue.proofImageUrl)} 
                                     alt="Proof" 
                                     className="max-h-24 rounded-lg border border-green-200 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                    onClick={() => setImageModal(issue.proofImageUrl)}
+                                    onClick={() => setImageModal(safeUrl(issue.proofImageUrl))}
                                   />
                                 </div>
                               )}
                             </div>
                           </div>
                         )}
-                        {issue.status === 'Resolved' && issue.proofImageUrl && !issue.supervisorPhoto && (
+                        {issue.status === 'Resolved' && safeUrl(issue.proofImageUrl) && !issue.supervisorPhoto && (
                           <div className="sm:col-span-2 lg:col-span-4">
                             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Resolution Proof</p>
                             <img 
-                              src={issue.proofImageUrl} 
+                              src={safeUrl(issue.proofImageUrl)} 
                               alt="Proof" 
                               className="max-h-48 rounded-lg border border-green-200 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => setImageModal(issue.proofImageUrl)}
+                              onClick={() => setImageModal(safeUrl(issue.proofImageUrl))}
                             />
                           </div>
                         )}
@@ -377,7 +378,7 @@ export default function AdminIssues() {
               </svg>
             </button>
             <img 
-              src={imageModal} 
+              src={safeUrl(imageModal)} 
               alt="Full screen" 
               className="max-w-full max-h-[85vh] mx-auto rounded-lg shadow-2xl"
             />

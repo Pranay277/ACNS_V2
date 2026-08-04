@@ -3,7 +3,9 @@ import { useParams, Link } from "react-router-dom";
 import MapView from "../components/MapView";
 import CameraCapture from "../components/CameraCapture";
 import { getIssue, updateStatus, verifyIssue } from "../services/api";
+import { MAX_IMAGE_BYTES, dataUrlByteSize } from "../utils/imageDataUrl";
 import { STATUS_BADGE_STYLES } from "../constants/statusStyles";
+import safeUrl from "../utils/safeUrl";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -91,6 +93,10 @@ const IssueDetails = () => {
   const handleProofImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > MAX_IMAGE_BYTES) {
+        setImageError(`Image is too large. Maximum size is ${MAX_IMAGE_BYTES / 1024}KB.`);
+        return;
+      }
       setProofImage(file);
       setImageError("");
       const reader = new FileReader();
@@ -102,6 +108,10 @@ const IssueDetails = () => {
   const handleResolveSubmit = async () => {
     if (!proofPreview) {
       setImageError("Proof image is required to mark as resolved.");
+      return;
+    }
+    if (dataUrlByteSize(proofPreview) > MAX_IMAGE_BYTES) {
+      setImageError(`Image is too large. Maximum size is ${MAX_IMAGE_BYTES / 1024}KB.`);
       return;
     }
     setBusy(true);
@@ -170,7 +180,9 @@ const IssueDetails = () => {
   }
 
   const location = issue.location || {};
-  const hasImage = Boolean(issue.imageUrl);
+  const imageUrl = safeUrl(issue.imageUrl);
+  const proofImageUrl = safeUrl(issue.proofImageUrl);
+  const hasImage = Boolean(imageUrl);
   const canStart = issue.status === "Open";
   const canResolve = issue.status === "In Progress";
   const canVerify = issue.status === "Resolved";
@@ -209,9 +221,9 @@ const IssueDetails = () => {
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               {hasImage ? (
-                <a href={issue.imageUrl} target="_blank" rel="noreferrer" title="Open uploaded image">
+                <a href={imageUrl} target="_blank" rel="noopener noreferrer" title="Open uploaded image">
                   <img
-                    src={issue.imageUrl}
+                    src={imageUrl}
                     alt={issue.description || "Uploaded issue image"}
                     className="w-full max-h-80 object-cover"
                   />
@@ -229,11 +241,11 @@ const IssueDetails = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-3">Description</h2>
               <p className="text-gray-700 leading-relaxed">{issue.description || "—"}</p>
-              {issue.proofImageUrl && issue.status !== "Open" && (
+              {proofImageUrl && issue.status !== "Open" && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   <h3 className="text-sm font-semibold text-gray-700 mb-2">Resolution Proof</h3>
-                  <a href={issue.proofImageUrl} target="_blank" rel="noreferrer">
-                    <img src={issue.proofImageUrl} alt="Resolution proof" className="max-h-48 rounded-lg" />
+                  <a href={proofImageUrl} target="_blank" rel="noopener noreferrer">
+                    <img src={proofImageUrl} alt="Resolution proof" className="max-h-48 rounded-lg" />
                   </a>
                 </div>
               )}
@@ -395,7 +407,7 @@ const IssueDetails = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       <p className="mt-2 text-sm text-gray-500">Click to upload proof image</p>
-                      <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+                      <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 512KB</p>
                     </div>
                   )}
                   {!proofPreview && (
