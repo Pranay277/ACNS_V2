@@ -22,6 +22,10 @@ backend/
 ├── core/                  # Global infrastructure (no feature imports)
 │   ├── config.py          # Centralized configuration (all constants/env settings)
 │   ├── firebase.py        # Firebase Admin SDK initialization (single Firestore handle)
+│   ├── auth.py            # Request identity extraction (Firebase ID-token verification)
+│   ├── permissions.py     # Role-based access control helpers
+│   ├── ownership.py       # Resource ownership checks (issue/supervisor/admin)
+│   ├── ratelimit.py       # In-memory per-key rate limiting
 │   └── logging.py         # Optional root logging configuration
 │
 ├── features/              # Vertical slices organized by business capability
@@ -61,9 +65,10 @@ backend/
 │           └── hindi.py
 │
 ├── shared/                # Code shared across features (feature-agnostic)
+│   ├── constants/         # Role / campus / status enums and label maps
 │   └── utils/
 │       ├── geo.py         # Shared Haversine great-circle distance
-│       └── validators.py  # Role / preferred-language validation
+│       └── validators.py  # Role / language + safe-URL & image-data-URL validation
 │
 ├── scripts/               # Dev scripts
 │   ├── seed_users.py      # Idempotent dev account/role provisioning
@@ -184,11 +189,27 @@ pip install -r requirements.txt
 ```
 
 ### 🔹 Step 2: Configure environment
-1. Copy `.env.example` to `.env` and fill in `TEXTBEE_API_KEY`, `TEXTBEE_DEVICE_ID`, and `FRONTEND_BASE_URL`.
+1. Copy `.env.example` to `.env` and fill in the values:
+   - `ENVIRONMENT=development` (or `local`; production requires `CORS_ALLOWED_ORIGINS`).
+   - `CORS_ALLOWED_ORIGINS` — comma-separated origin allow-list (optional in dev; **mandatory in production**).
+   - `TEXTBEE_API_KEY`, `TEXTBEE_DEVICE_ID`, and `FRONTEND_BASE_URL`.
+   - `SEED_ACCOUNT_PASSWORD` — required by the seed script (never hardcoded).
 2. Place your Firebase Admin SDK JSON at `serviceAccountKey.json` (backend root).
+
+> 🔒 **CORS**: the API never uses a wildcard origin with credentials. In
+> development/local the local Vite origins
+> (`http://localhost:5173`, `http://127.0.0.1:5173`) are allowed by default.
+> In production the server refuses to start unless `CORS_ALLOWED_ORIGINS` is
+> set explicitly.
 
 ### 🔹 Step 3: Seed (optional, dev only)
 ```bash
+# Firestore Security Rules (deny all direct client access — FastAPI is the
+# system of record). See firestore.rules at the project root.
+firebase deploy --only firestore:rules
+
+# Seed scripts are development-only. Set ENVIRONMENT + SEED_ACCOUNT_PASSWORD
+# in backend/.env first; they abort otherwise.
 python scripts/seed_users.py    # provisioning roles/profiles
 python scripts/seed_graph.py    # seeding the campus navigation graph
 ```
@@ -208,6 +229,5 @@ Go to: http://127.0.0.1:8000/docs
 - Handles all API requests from the frontend
 
 ## 💡 Future Improvements
-- Role-based middleware / authorization decorators
 - Pagination & filtering on list endpoints
 - Real-time updates (WebSockets / Firestore listeners)

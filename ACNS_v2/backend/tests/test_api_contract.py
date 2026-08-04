@@ -131,3 +131,34 @@ def test_openapi_docs_load():
     client = TestClient(main.app)
     assert client.get("/openapi.json").status_code == 200
     assert client.get("/docs").status_code == 200
+
+
+def test_cors_middleware_never_uses_wildcard():
+    """CORS must be an explicit allow-list — never '*' with credentials."""
+    for mw in main.app.user_middleware:
+        if mw.cls.__name__ == "CORSMiddleware":
+            origins = mw.kwargs.get("allow_origins", [])
+            assert "*" not in origins
+            assert mw.kwargs.get("allow_credentials") is True
+            assert "http://localhost:5173" in origins  # dev default preserved
+            return
+    raise AssertionError("CORSMiddleware not registered on the app")
+
+
+def test_cors_allows_configured_dev_origin():
+    from fastapi.testclient import TestClient
+
+    client = TestClient(main.app)
+    resp = client.get("/", headers={"Origin": "http://localhost:5173"})
+    assert resp.status_code == 200
+    assert resp.headers.get("access-control-allow-origin") == "http://localhost:5173"
+    assert resp.headers.get("access-control-allow-credentials") == "true"
+
+
+def test_cors_blocks_disallowed_origin():
+    from fastapi.testclient import TestClient
+
+    client = TestClient(main.app)
+    resp = client.get("/", headers={"Origin": "http://evil.example.com"})
+    assert resp.status_code == 200
+    assert "access-control-allow-origin" not in resp.headers

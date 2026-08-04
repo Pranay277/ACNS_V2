@@ -7,19 +7,34 @@ Endpoint:
     Returns: path coordinates list and route metadata.
 
 Business logic lives in features/navigation/service.py.
+
+Both endpoints require an authenticated user (campus maps and routing are an
+authenticated feature).
 """
 
-from fastapi import APIRouter, HTTPException
+import logging
 
+from fastapi import APIRouter, Depends, HTTPException
+
+from core.auth import CurrentUser
+from core.config import GENERIC_INTERNAL_ERROR_MESSAGE
 from core.firebase import db
+from core.permissions import require_authenticated
+from core.ratelimit import rate_limited
 from features.navigation.schemas import NavigationRequest
 from features.navigation.service import calculate_route
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
 @router.post("/route")
-def get_route(request: NavigationRequest):
+def get_route(
+    request: NavigationRequest,
+    _: None = Depends(rate_limited("navigation_route")),
+    current_user: CurrentUser = Depends(require_authenticated),
+):
     """
     Calculate the shortest accessible path between two campus nodes using A*.
     """
@@ -34,11 +49,15 @@ def get_route(request: NavigationRequest):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Navigation engine error: {str(e)}")
+        logger.error("Navigation route unexpected error: %s", e)
+        raise HTTPException(status_code=500, detail=GENERIC_INTERNAL_ERROR_MESSAGE)
 
 
 @router.get("/campuses/{campus_id}/nodes")
-def get_campus_nodes(campus_id: str):
+def get_campus_nodes(
+    campus_id: str,
+    current_user: CurrentUser = Depends(require_authenticated),
+):
     """
     Returns all landmark nodes for a given campus (used to populate frontend dropdowns).
     """

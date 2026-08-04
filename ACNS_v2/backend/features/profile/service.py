@@ -149,6 +149,17 @@ def _locate_profile(identifier):
     return None, None
 
 
+def locate_profile(identifier):
+    """
+    Public alias for ``_locate_profile``: return ``(profile_dict, ref)``.
+
+    Used by the auth/ownership layers (``core/auth.py``, ``core/ownership.py``)
+    so they can resolve a profile AND the document reference (for deriving the
+    owning collection) without reaching into private helpers.
+    """
+    return _locate_profile(identifier)
+
+
 # ── Profile creation / reconciliation ──────────────────────────────────────────
 
 

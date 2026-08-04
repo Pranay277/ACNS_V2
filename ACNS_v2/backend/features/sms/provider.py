@@ -42,6 +42,14 @@ TEXTBEE_BASE_URL = (os.getenv("TEXTBEE_BASE_URL") or "https://api.textbee.dev").
 SEND_SMS_TIMEOUT_SECONDS = 10
 
 
+def mask_phone(phone_number) -> str:
+    """Redact a phone number for logging (P2-07): keep ends, mask the middle."""
+    value = str(phone_number or "").strip()
+    if len(value) <= 6:
+        return "***"
+    return value[:3] + "*" * (len(value) - 5) + value[-2:]
+
+
 class TextBeeError(RuntimeError):
     """Raised when the TextBee gateway rejects or cannot reach an SMS request."""
 
@@ -95,20 +103,21 @@ class AndroidGatewayProvider:
             )
         except Exception as exc:  # noqa: BLE001 — any transport failure becomes a TextBeeError
             raise TextBeeError(
-                f"TextBee request failed for {phone_number}: {exc}"
+                f"TextBee request failed for {mask_phone(phone_number)}: {exc}"
             ) from exc
 
         if response.status_code >= 400:
             raise TextBeeError(
-                f"TextBee rejected SMS to {phone_number}: HTTP "
+                f"TextBee rejected SMS to {mask_phone(phone_number)}: HTTP "
                 f"{response.status_code} {response.text[:300]}"
             )
 
+        # P2-07: never log the SMS body (or the raw recipient). Only a masked
+        # recipient, the timestamp and the gateway status are written.
         logger.info(
-            "[android-gateway] sent time=%s to=%s message=%s status=%s",
+            "[android-gateway] sent time=%s to=%s status=%s",
             timestamp,
-            phone_number,
-            repr(message),
+            mask_phone(phone_number),
             response.status_code,
         )
         return {

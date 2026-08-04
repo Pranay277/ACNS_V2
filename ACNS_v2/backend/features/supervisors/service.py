@@ -247,12 +247,16 @@ def change_supervisor_email(uid: str, new_email: str) -> dict:
         raise ValueError(f"Email '{new_email}' is already in use by another account")
 
     admin_auth.update_user(uid, email=new_email)
+    auth_service.revoke_refresh_tokens(uid)
     return profile_service.set_user_email(uid, new_email)
 
 
 def deactivate_supervisor(uid: str) -> dict:
     """Disable a supervisor: block Firebase Auth login + soft-delete profile."""
     _set_auth_disabled(uid, disabled=True)
+    # Revoke the supervisor's refresh tokens so already-issued ID tokens stop
+    # validating immediately (verify_id_token runs with check_revoked=True).
+    auth_service.revoke_refresh_tokens(uid)
     return profile_service.set_user_active(uid, False)
 
 
@@ -290,7 +294,10 @@ def reset_supervisor_password(uid: str, new_password: str) -> None:
     if record is None:
         raise ValueError(f"No auth account found for {uid}")
     admin_auth.update_user(record.uid, password=new_password)
-    logger.info("Reset password for %s", uid)
+    # Force re-login everywhere: revoke existing refresh tokens so old ID
+    # tokens (and any other sessions) stop validating immediately.
+    auth_service.revoke_refresh_tokens(record.uid)
+    logger.info("Reset password for %s", record.uid)
 
 
 def list_supervisors(include_inactive: bool = False) -> list:

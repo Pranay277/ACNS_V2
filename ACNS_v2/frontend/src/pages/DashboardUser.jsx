@@ -4,6 +4,7 @@ import NavbarUser from "../components/NavbarUser";
 import IssueCard from "../components/IssueCard";
 import MapView from "../components/MapView";
 import { getIssues, getNotifications } from "../services/api";
+import safeUrl from "../utils/safeUrl";
 import { STATUS_BADGE_STYLES_WITHOUT_CLOSED, STATUS_PILL_STYLES, GRAY_STATUS_BADGE } from "../constants/statusStyles";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
@@ -544,14 +545,14 @@ export default function DashboardUser() {
               )}
 
               {/* Image */}
-              {selectedIssue.imageUrl && (
+              {safeUrl(selectedIssue.imageUrl) && (
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Photo</p>
                   <img 
-                    src={selectedIssue.imageUrl} 
+                    src={safeUrl(selectedIssue.imageUrl)} 
                     alt="Issue" 
                     className="w-full h-40 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => setLocationModal({ imageUrl: selectedIssue.imageUrl })}
+                    onClick={() => setLocationModal({ imageUrl: safeUrl(selectedIssue.imageUrl) })}
                   />
                 </div>
               )}
@@ -613,7 +614,7 @@ export default function DashboardUser() {
               </svg>
             </button>
             <img 
-              src={locationModal.imageUrl} 
+              src={safeUrl(locationModal.imageUrl)} 
               alt="Issue" 
               className="max-w-full max-h-[85vh] mx-auto rounded-lg shadow-2xl"
             />

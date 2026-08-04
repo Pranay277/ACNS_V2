@@ -2,6 +2,7 @@ import { useState } from "react";
 import IssueCard from "./IssueCard";
 import CameraCapture from "./CameraCapture";
 import { updateStatus } from "../services/api";
+import { MAX_IMAGE_BYTES, dataUrlByteSize } from "../utils/imageDataUrl";
 
 const SupervisorTaskList = ({ tasks = [], loading = false, onStatusChange }) => {
   const [resolveModalTaskId, setResolveModalTaskId] = useState(null);
@@ -40,6 +41,10 @@ const SupervisorTaskList = ({ tasks = [], loading = false, onStatusChange }) => 
   const handleProofImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > MAX_IMAGE_BYTES) {
+        setImageError(`Image is too large. Maximum size is ${MAX_IMAGE_BYTES / 1024}KB.`);
+        return;
+      }
       setProofImage(file);
       setImageError("");
       const reader = new FileReader();
@@ -51,6 +56,10 @@ const SupervisorTaskList = ({ tasks = [], loading = false, onStatusChange }) => 
   const handleResolveSubmit = async () => {
     if (!proofPreview) {
       setImageError("Proof image is required to mark as resolved.");
+      return;
+    }
+    if (dataUrlByteSize(proofPreview) > MAX_IMAGE_BYTES) {
+      setImageError(`Image is too large. Maximum size is ${MAX_IMAGE_BYTES / 1024}KB.`);
       return;
     }
 
@@ -181,7 +190,7 @@ const SupervisorTaskList = ({ tasks = [], loading = false, onStatusChange }) => 
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       <p className="mt-2 text-sm text-gray-500">Click to upload proof image</p>
-                      <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+                      <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 512KB</p>
                     </div>
                   )}
                   {!proofPreview && (

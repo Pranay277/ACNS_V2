@@ -334,23 +334,13 @@ ACNS_v2/
 - Role-based middleware / authorization decorators on all endpoints
 - Real-time issue updates via WebSockets or Firestore listeners
 - Pagination & filtering on list endpoints
-- Firebase Storage for proof-of-work image uploads
+- Firebase Storage for proof-of-work image uploads (images are currently sent
+  as base64 data URLs since the project stays on the Spark free plan)
 - Push / email notification channel alongside in-app and SMS
 - UI localization (English / Telugu / Hindi) to match SMS support
 - CI/CD pipeline (GitHub Actions: tests + frontend build) and Docker deployment
 
 ---
 
-## 👥 Contributors
 
-| Name | Role |
-|---|---|
-| <!-- Your Name --> | <!-- e.g., Full-Stack Developer --> |
-| <!-- Your Name --> | <!-- e.g., Frontend Developer --> |
-| <!-- Your Name --> | <!-- e.g., Backend Developer --> |
 
----
-
-## 📄 License
-
-This project is for educational purposes.

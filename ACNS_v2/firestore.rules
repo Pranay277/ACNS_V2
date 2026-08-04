@@ -1,0 +1,86 @@
+rules_version = '2';
+
+// ============================================================================
+// Firestore Security Rules — ACNS (SCIARS)
+// ============================================================================
+// FastAPI (via the Firebase Admin SDK in backend/core/firebase.py) is the
+// system of record for every read and write in this project. The Admin SDK
+// bypasses these rules entirely, so this file only governs *direct client*
+// (browser/mobile SDK) access.
+//
+// The web client (frontend/src/services/firebase.js) is configured with the
+// public apiKey + projectId and MUST NOT be able to reach any Firestore data
+// directly. All client requests go through the FastAPI API, which verifies
+// Firebase ID tokens and enforces role-based access server-side.
+//
+// Security stance: DENY BY DEFAULT. Any collection that does not explicitly
+// opt into a client `allow` rule is unreachable from the browser.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Signed-in helper for any future, deliberate client-facing rules.
+    // Kept for clarity even though no client rules exist today.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // --------------------------------------------------------------------
+    // Global deny-by-default.
+    // Every document in every collection is denied unless an explicit
+    // allow-rule below grants access. FastAPI remains the only data path.
+    // --------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --------------------------------------------------------------------
+    // students — role-scoped student profiles (keyed by Firebase UID).
+    // Contains email/phone/name. No client access: FastAPI serves profiles
+    // via /api/* after server-side token verification.
+    // --------------------------------------------------------------------
+    match /students/{document} {
+      allow read, write: if false;
+    }
+
+    // --------------------------------------------------------------------
+    // supervisors — role-scoped supervisor profiles (keyed by Firebase UID).
+    // Contains email/phone/department. Admin provisioning and supervisor
+    // self-service are served exclusively through the FastAPI API.
+    // --------------------------------------------------------------------
+    match /supervisors/{document} {
+      allow read, write: if false;
+    }
+
+    // --------------------------------------------------------------------
+    // admins — role-scoped admin profiles (keyed by Firebase UID).
+    // Highest-privilege identity data. Never reachable from the client.
+    // --------------------------------------------------------------------
+    match /admins/{document} {
+      allow read, write: if false;
+    }
+
+    // --------------------------------------------------------------------
+    // gamification_users — points, ranks and reward history.
+    // Read/write only via /api/gamification/* on the backend.
+    // --------------------------------------------------------------------
+    match /gamification_users/{document} {
+      allow read, write: if false;
+    }
+
+    // --------------------------------------------------------------------
+    // notifications — in-app notification records.
+    // Read/write only via /api/notifications/* on the backend.
+    // --------------------------------------------------------------------
+    match /notifications/{document} {
+      allow read, write: if false;
+    }
+
+    // --------------------------------------------------------------------
+    // Other collections (issues, users legacy, campuses, navigation graph…)
+    // are also denied by the catch-all rule above. Add an explicit match +
+    // allow here ONLY if a minimum, deliberately-scoped client operation is
+    // ever required. Do not relax the catch-all itself.
+    // --------------------------------------------------------------------
+  }
+}
