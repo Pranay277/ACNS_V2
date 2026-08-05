@@ -5,9 +5,9 @@
 # `pip-audit -r requirements.txt` in CI. A full transitive lockfile can be
 # generated with pip-tools (`pip-compile`) if a stricter supply-chain posture
 # is required.
-fastapi==0.115.6
+fastapi==0.141.1
 uvicorn==0.34.0
-pydantic==2.8.2
+pydantic==2.13.4
 firebase-admin==7.2.0
-requests==2.32.3
+requests==2.33.0
 python-dotenv==1.2.2
