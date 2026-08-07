@@ -28,4 +28,4 @@ fi
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
 
 echo "Starting SCIARS backend (ENVIRONMENT=production) on :8000 ..."
-exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers "${UVICORN_WORKERS:-2}"
+exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers "${UVICORN_WORKERS:-2}" --proxy-headers --forwarded-allow-ips="*"
