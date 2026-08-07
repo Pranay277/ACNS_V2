@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polygon, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
-import axios from "axios";
 import "leaflet/dist/leaflet.css";
 import NavbarUser from "../components/NavbarUser";
-import { getIssues } from "../services/api";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+import { getIssues, calculateRoute } from "../services/api";
 
 const CATEGORIES = ["Infrastructure", "Electrical", "Cleanliness", "Safety", "Transport", "Environment"];
 
@@ -163,7 +160,7 @@ export default function UserNavigate() {
     setRouteResult(null);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/navigation/route`, {
+      const response = await calculateRoute({
         campus_id: campus.campusId,
         start_node: startId,
         end_node: endId,
