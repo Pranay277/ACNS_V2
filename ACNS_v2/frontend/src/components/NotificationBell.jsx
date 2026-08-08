@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+import { getNotifications } from '../services/api';
 
 const NotificationBell = ({ userId }) => {
   const [notifications, setNotifications] = useState([]);
@@ -18,7 +16,7 @@ const NotificationBell = ({ userId }) => {
     try {
       if (!isBackground) setLoading(true);
       if (!isBackground) setError(null);
-      const response = await axios.get(`${API_BASE_URL}/notifications/${userId}`);
+      const response = await getNotifications(userId);
       const fetchedNotifications = response.data || [];
       
       const readIds = JSON.parse(localStorage.getItem(storageKey) || '[]');

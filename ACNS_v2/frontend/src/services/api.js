@@ -52,8 +52,8 @@ export const login = (idToken) => API.post("/auth/login", { idToken });
 export const signup = (data) => API.post("/auth/signup", data);
 
 // SUPERVISORS (admin-managed; all ops keyed by Firebase UID)
-export const getSupervisors = (params) => API.get("/supervisors", { params });
-export const createSupervisor = (data) => API.post("/supervisors", data);
+export const getSupervisors = (params) => API.get("/supervisors/", { params });
+export const createSupervisor = (data) => API.post("/supervisors/", data);
 export const getSupervisor = (uid) =>
   API.get(`/supervisors/${encodeURIComponent(uid)}`);
 export const updateSupervisor = (uid, data) =>
@@ -72,10 +72,10 @@ export const resetSupervisorPassword = (uid, data) =>
   API.post(`/supervisors/${encodeURIComponent(uid)}/reset-password`, data);
 
 // CREATE ISSUE
-export const createIssue = (data) => API.post("/issues", data);
+export const createIssue = (data) => API.post("/issues/", data);
 
 // GET ISSUES
-export const getIssues = (params) => API.get("/issues", { params });
+export const getIssues = (params) => API.get("/issues/", { params });
 
 // GET SINGLE ISSUE (Issue Details page)
 export const getIssue = (id) => API.get(`/issues/${id}`);
@@ -95,4 +95,7 @@ export const getLeaderboard = (params) =>
   API.get("/gamification/leaderboard", { params });
 export const getUserGamification = (userId) =>
   API.get(`/gamification/user/${userId}`);
+
+// NAVIGATION
+export const calculateRoute = (data) => API.post("/navigation/route", data);
 export default API;

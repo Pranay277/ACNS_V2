@@ -14,6 +14,22 @@ from features.sms import service as sms_service
 from features.sms.provider import AndroidGatewayProvider, mask_phone
 
 
+@pytest.fixture(autouse=True)
+def _textbee_configured(monkeypatch):
+    """
+    Satisfy the provider's "not configured" guard so the transport-path log
+    tests can run without TextBee credentials (GitHub Actions has no
+    ``backend/.env``). The constants are module globals read at call time, so
+    patching them is enough. ``requests.post`` is mocked in every test that
+    uses the provider, so nothing ever contacts the TextBee gateway. The
+    dummy values are placeholders, never real credentials.
+    """
+    import features.sms.provider as provider_mod
+
+    monkeypatch.setattr(provider_mod, "TEXTBEE_API_KEY", "ci-test-key")
+    monkeypatch.setattr(provider_mod, "TEXTBEE_DEVICE_ID", "ci-test-device")
+
+
 # ── mask_phone ─────────────────────────────────────────────────────────────────
 
 

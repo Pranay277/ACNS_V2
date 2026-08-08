@@ -212,6 +212,7 @@ def test_assigned_sms_skipped_when_counter_blocks(monkeypatch):
 def test_assigned_sms_sent_when_counter_allows(monkeypatch):
     monkeypatch.setattr(notif_service, "create_notification", lambda **kw: None)
     monkeypatch.setattr(notif_service, "get_user_profile", lambda uid: {"phoneNumber": "+911234567890"})
+    monkeypatch.setattr(notif_service, "_issue_doc", lambda issue_id: {})
     monkeypatch.setattr(counters, "increment_sms_counter", lambda uid: (True, None))
 
     sent = []
