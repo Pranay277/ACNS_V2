@@ -16,7 +16,7 @@ ISSUE = {
     "priority": "High",
     "description": "Flickering light in corridor",
     "image_url": "https://storage.example/photo.jpg",
-    "issue_url": "http://localhost:5173/issues/methodist/abc123",
+    "issue_url": "https://acns-v2.vercel.app/issues/methodist/abc123",
     "issue_id": "abc123",
 }
 
@@ -39,15 +39,28 @@ def test_missing_language_falls_back_to_english():
     assert build_issue_assigned_message(ISSUE, None) == build_issue_assigned_message(ISSUE, "en")
 
 
-def test_english_includes_image_section_when_present():
+def test_english_includes_photo_notice_without_image_data():
     message = build_issue_assigned_message(ISSUE, "en")
-    assert "View Uploaded Photo" in message
+    assert "View the uploaded photo in the SCIARS dashboard." in message
+    assert "View Uploaded Photo" not in message
+    assert ISSUE["image_url"] not in message
+    assert "data:image" not in message
 
 
-def test_english_omits_image_section_when_missing():
+def test_english_omits_photo_notice_when_missing():
     issue = dict(ISSUE, image_url=None)
     message = build_issue_assigned_message(issue, "en")
-    assert "View Uploaded Photo" not in message
+    assert "View the uploaded photo in the SCIARS dashboard." not in message
+    assert "data:image" not in message
+
+
+def test_message_never_contains_base64_or_localhost():
+    for language in ["en", "te", "hi"]:
+        message = build_issue_assigned_message(ISSUE, language)
+        assert "data:image" not in message
+        assert "base64" not in message
+        assert "localhost" not in message
+        assert len(message) < 4096
 
 
 def test_registry_get_template():
