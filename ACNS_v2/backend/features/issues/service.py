@@ -311,6 +311,7 @@ def create_issue(issue: IssueCreate, reporter_uid: str, reporter_email: str = No
     new_issue = {
         "userId": reporter_uid,
         "category": issue.category,
+        "subCategory": issue.subCategory,
         "description": issue.description,
         "imageUrl": issue.imageUrl,
         "campusId": campus_id,

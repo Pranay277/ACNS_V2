@@ -14,6 +14,7 @@ class IssueCreate(BaseModel):
 
     userId: str
     category: str
+    subCategory: Optional[str] = None
     description: str
     imageUrl: Optional[str] = None
     lat: float
