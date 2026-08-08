@@ -181,8 +181,8 @@ SMS_PROVIDER = "android_gateway"
 # backend/.env (FRONTEND_BASE_URL) so it can be swapped to the production
 # origin without touching code. The full link becomes
 #   {FRONTEND_BASE_URL}/issues/{campus_id}/{issue_id}
-FRONTEND_BASE_URL = os.environ.get(
-    "FRONTEND_BASE_URL", "http://localhost:5173"
+FRONTEND_BASE_URL = (
+    os.environ.get("FRONTEND_BASE_URL") or "https://acns-v2.vercel.app"
 ).rstrip("/")
 
 # ══ SMS language support ═══════════════════════════════════════════════════════

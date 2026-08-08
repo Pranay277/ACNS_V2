@@ -37,12 +37,10 @@ def build_issue_assigned_sms(issue: dict) -> str:
         "📝 विवरण:",
         issue.get("description") or "—",
     ]
-    image_url = issue.get("image_url")
-    if image_url:
+    if issue.get("image_url"):
         lines += [
             "",
-            "📷 अपलोड की गई फ़ोटो देखें:",
-            image_url,
+            "📷 View the uploaded photo in the SCIARS dashboard.",
         ]
     lines += [
         "",
