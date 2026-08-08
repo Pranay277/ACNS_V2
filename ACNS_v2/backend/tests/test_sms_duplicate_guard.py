@@ -132,7 +132,7 @@ def test_first_dispatch_sends_sms_and_persists(monkeypatch):
     assert result is True
     assert len(dispatched) == 1
     assert dispatched[0]["issue_id"] == "i1"
-    assert dispatched[0]["supervisor_email"] == "uid-sup-1"
+    assert dispatched[0]["supervisor_uid"] == "uid-sup-1"
     assert db._issues["i1"]["smsSent"] is True
     assert db._issues["i1"]["smsSentAt"]
 
@@ -189,7 +189,7 @@ def test_first_report_sends_sms_once_and_persists_flag(monkeypatch):
 
     assert len(dispatches) == 1
     assert dispatches[0]["issue_id"] == created["issue_id"]
-    assert dispatches[0]["supervisor_email"] == "uid-sup-1"
+    assert dispatches[0]["supervisor_uid"] == "uid-sup-1"
     assert dispatches[0]["category"] == "Water"
 
     assert db._issues[created["issue_id"]]["smsSent"] is True

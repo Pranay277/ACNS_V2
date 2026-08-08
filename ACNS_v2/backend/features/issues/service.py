@@ -206,7 +206,7 @@ def _dispatch_assignment_sms_once(
         return False
     notify_issue_assigned(
         issue_id=issue_id,
-        supervisor_email=supervisor_uid,
+        supervisor_uid=supervisor_uid,
         category=category,
         location_text=location_text,
     )
